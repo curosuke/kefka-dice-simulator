@@ -37,15 +37,23 @@
               <div><span>時間</span><strong id="timeDisplay">0.0s</strong></div>
               <div><span>位置</span><strong id="positionDisplay">X 0.0 / Y 0.0</strong></div>
               <div><span>向き</span><strong id="facingDisplay">0°</strong></div>
-              <div><span>デバフ</span><strong id="debuffDisplay">混沌の風</strong></div>
+              <div><span>混沌の風</span><strong id="debuffDisplay">背面で受ける</strong></div>
               <div><span>移動先</span><strong id="targetDisplay">未指定</strong></div>
             </div>
           </section>
 
           <section class="card">
             <p class="panel-label">TIMELINE</p>
-            <strong id="phaseLabel">準備フェーズ</strong>
-            <p class="panel-label">Notes</p>
+            <ul id="timelineList" class="timeline-list">
+              <li data-step="0">開始待ち</li>
+              <li data-step="1">真空波詠唱</li>
+              <li data-step="2">ノックバック後</li>
+              <li data-step="3">サイコロ付与</li>
+              <li data-step="4">頭割り処理後</li>
+              <li data-step="5">最終散開移動</li>
+              <li data-step="6">同時8本発生</li>
+            </ul>
+            <p class="panel-label notes-label">Notes</p>
             <ul id="notesList" class="notes-list">
               <li>真空波はエクスデス基準で背面受けなら OK</li>
               <li>向きを誤るとノックバック距離が伸びて NG</li>

@@ -2,13 +2,14 @@ const canvas = document.getElementById("arena");
 const ctx = canvas.getContext("2d");
 
 const UI = {
-  phase: document.getElementById("phaseLabel"),
   time: document.getElementById("timeDisplay"),
   position: document.getElementById("positionDisplay"),
   facing: document.getElementById("facingDisplay"),
   debuff: document.getElementById("debuffDisplay"),
   target: document.getElementById("targetDisplay"),
   playerInfoCard: document.getElementById("playerInfoCard"),
+  timelineList: document.getElementById("timelineList"),
+  timelineItems: Array.from(document.querySelectorAll("#timelineList li")),
   notesList: document.getElementById("notesList"),
   introModal: document.getElementById("introModal"),
   modalGuideToggle: document.getElementById("modalGuideToggle"),
@@ -124,17 +125,17 @@ const CHAOS_WIND_TYPES = {
 
 const TIMINGS = {
   castStart: 0.8,
-  vacuumVisibleStart: 3.05,
-  vacuumResolveAt: 4.0,
+  vacuumVisibleStart: 8.0,
+  vacuumResolveAt: 8.8,
   observationStart: 0.8,
   observationInterval: 1.1,
   observationCount: 8,
-  diceAt: 6.0,
-  stackTelegraphAt: 7.0,
-  stackResolveAt: 8.0,
-  npcRelocateStartAt: 12.6,
-  finalBlastAt: 14.6,
-  finishAt: 16.2,
+  diceAt: 10.8,
+  preVacuumGatherStartAt: 8.1,
+  stackGatherStartAt: 11.8,
+  npcRelocateStartAt: 17.4,
+  finalBlastAt: 19.4,
+  finishAt: 21.0,
 };
 
 const FINAL_BURST_SOURCE_ORDER = [1, 8, 7, 6, 5, 4, 3, 2];
@@ -143,6 +144,7 @@ const VACUUM_WAVE = {
   safeKnockback: 96,
   failKnockback: 228,
   facingTolerance: Math.PI / 3,
+  animationDuration: 0.36,
 };
 
 const LINE_VISUAL = {
@@ -185,6 +187,10 @@ const state = {
   chaosWind: null,
   finalBurstFailures: [],
   stackFailure: false,
+  stackResolved: false,
+  stackResolvedAt: null,
+  knockbackAnimation: null,
+  pendingFailureReason: null,
   showGuides: true,
 };
 
@@ -339,6 +345,10 @@ function resetSimulation() {
   state.chaosWind = randomChaosWind();
   state.finalBurstFailures = [];
   state.stackFailure = false;
+  state.stackResolved = false;
+  state.stackResolvedAt = null;
+  state.knockbackAnimation = null;
+  state.pendingFailureReason = null;
   state.party = createParty(state.player);
   UI.guideToggle.textContent = state.showGuides ? "ガイドOFF" : "ガイドON";
   UI.reset.textContent = "リセット";
@@ -369,7 +379,7 @@ function currentTimelineIndex() {
     TIMINGS.castStart,
     TIMINGS.vacuumResolveAt,
     TIMINGS.diceAt,
-    TIMINGS.stackResolveAt,
+    state.stackResolvedAt ?? Number.POSITIVE_INFINITY,
     TIMINGS.npcRelocateStartAt,
     TIMINGS.finalBlastAt,
   ];
@@ -378,20 +388,6 @@ function currentTimelineIndex() {
     if (state.time >= checkpoints[i]) index = i;
   }
   return index;
-}
-
-function currentPhaseLabel() {
-  const labels = [
-    "開始待ち",
-    "真空波詠唱",
-    "ノックバック後",
-    "サイコロ付与",
-    "頭割り処理後",
-    "最終散開移動",
-    "同時8本発生",
-  ];
-  if (state.finished) return "シミュレーション終了";
-  return labels[currentTimelineIndex()];
 }
 
 function normalizeDegrees(radian) {
@@ -466,19 +462,18 @@ function handleClickMovement(dt) {
 }
 
 function syncHud() {
-  UI.phase.textContent = currentPhaseLabel();
   UI.time.textContent = state.showGuides ? `${state.time.toFixed(1)}s` : "—";
   UI.position.textContent = state.showGuides ? `X ${state.player.x.toFixed(1)} / Y ${state.player.y.toFixed(1)}` : "—";
   UI.facing.textContent = state.showGuides ? `${normalizeDegrees(state.player.facing).toFixed(0)}°` : "—";
-  const windLabel = state.chaosWind ? `混沌の風(${state.chaosWind.label})` : "混沌の風";
-  UI.debuff.textContent = state.showGuides ? `${windLabel} / ${state.player.diceValue}` : "—";
-  UI.target.textContent = state.showGuides
-    ? (state.moveTarget
-      ? `X ${state.moveTarget.x.toFixed(1)} / Y ${state.moveTarget.y.toFixed(1)}`
-      : `${state.player.finalPairLabel} へ移動`)
-    : "—";
+  UI.debuff.textContent = state.showGuides ? (state.chaosWind?.label || "—") : "—";
+  UI.target.textContent = state.showGuides ? `${state.player.finalPairLabel} へ移動` : "—";
   UI.playerInfoCard.style.display = state.showGuides ? "grid" : "none";
+  UI.timelineList.style.display = state.showGuides ? "grid" : "none";
   UI.notesList.style.display = state.showGuides ? "block" : "none";
+  const activeIndex = state.finished ? UI.timelineItems.length - 1 : currentTimelineIndex();
+  UI.timelineItems.forEach((item, index) => {
+    item.classList.toggle("is-active", state.showGuides && index === activeIndex);
+  });
 }
 
 function activeObservationLines() {
@@ -506,6 +501,7 @@ function activeObservationLines() {
 }
 
 function updateParty(dt) {
+  if (state.knockbackAnimation) return;
   for (const member of state.party) {
     if (member.id === "YOU") continue;
     const target = npcTargetPosition(member);
@@ -539,7 +535,7 @@ function stackGatherPoint(index, total) {
 }
 
 function npcTargetPosition(member) {
-  if (state.time >= TIMINGS.stackTelegraphAt && state.time < TIMINGS.npcRelocateStartAt) {
+  if (state.time >= TIMINGS.preVacuumGatherStartAt && state.time < TIMINGS.npcRelocateStartAt) {
     const npcs = state.party.filter((item) => item.id !== "YOU");
     const index = npcs.findIndex((item) => item.id === member.id);
     return stackGatherPoint(index, npcs.length);
@@ -624,20 +620,22 @@ function drawNumberMarkers() {
     ctx.translate(point.x, point.y);
     ctx.fillStyle = style.glow;
     ctx.beginPath();
-    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.arc(0, 0, 30, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = style.fill;
     ctx.beginPath();
-    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+    ctx.arc(0, 0, 26, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = style.stroke;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 2.2;
     ctx.stroke();
+    ctx.shadowColor = style.stroke;
+    ctx.shadowBlur = 14;
     ctx.fillStyle = "#f4f1ea";
-    ctx.font = "700 18px 'Yu Gothic UI', sans-serif";
+    ctx.font = "700 22px 'Yu Gothic UI', sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(marker.label, 0, 1);
+    ctx.fillText(marker.label, 0, 2);
     ctx.restore();
   });
 }
@@ -658,6 +656,38 @@ function drawExdeath() {
     ctx.arc(0, 0, state.exdeath.radius, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
+}
+
+function drawExdeathCastBar() {
+  if (state.time < TIMINGS.castStart || state.resolvedVacuumWave) return;
+
+  const castDuration = TIMINGS.vacuumResolveAt - TIMINGS.castStart;
+  const progress = Math.max(0, Math.min(1, (state.time - TIMINGS.castStart) / castDuration));
+  const barWidth = 168;
+  const barHeight = 18;
+  const x = state.exdeath.x - barWidth / 2;
+  const y = state.exdeath.y - 92;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(10, 14, 22, 0.92)";
+  ctx.beginPath();
+  ctx.roundRect(x, y, barWidth, barHeight, 999);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = "#f4dc8a";
+  ctx.beginPath();
+  ctx.roundRect(x + 2, y + 2, (barWidth - 4) * progress, barHeight - 4, 999);
+  ctx.fill();
+
+  ctx.fillStyle = "#f4f1ea";
+  ctx.font = "700 12px 'Yu Gothic UI', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("真空波", state.exdeath.x, y - 6);
   ctx.restore();
 }
 
@@ -779,10 +809,11 @@ function drawFinalBurst() {
 }
 
 function drawStackTelegraph() {
-  if (state.time < TIMINGS.stackTelegraphAt || state.time > TIMINGS.stackResolveAt + 0.15) return;
+  if (state.time < TIMINGS.stackGatherStartAt) return;
+  if (state.stackResolved && state.time > state.stackResolvedAt + 0.15) return;
 
   const player = state.player;
-  const resolving = state.time >= TIMINGS.stackResolveAt;
+  const resolving = state.stackResolved;
   const radius = resolving ? 96 : 76;
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -902,6 +933,7 @@ function draw() {
   drawObservation();
   drawFinalBurst();
   drawExdeath();
+  drawExdeathCastBar();
   drawVacuumWave();
   drawStackTelegraph();
   drawMoveTarget();
@@ -914,6 +946,79 @@ function draw() {
   drawChaosWindPanel();
 }
 
+function renderResult(status, reason = "") {
+  state.running = false;
+  state.finished = true;
+  UI.reset.textContent = "リトライ";
+  if (!SHOW_RESULT_MODAL) return;
+
+  UI.resultKicker.textContent = "";
+  UI.resultTitle.textContent = status;
+  UI.resultReason.textContent = reason;
+  UI.resultReason.style.display = reason ? "block" : "none";
+  UI.resultOverlay.classList.remove("hidden");
+}
+
+function showFailureResult(reason) {
+  renderResult("FAILED", reason);
+}
+
+function vacuumFailureReason() {
+  if (state.chaosWind?.faceMode === "toward") {
+    return "真空波は失敗。混沌の風は正面で受ける必要がありました。";
+  }
+  return "真空波は失敗。混沌の風は背面で受ける必要がありました。";
+}
+
+function startKnockbackAnimation(ok) {
+  const members = {};
+  for (const member of state.party) {
+    const memberAwayAngle = Math.atan2(member.y - state.exdeath.y, member.x - state.exdeath.x);
+    const knockbackDistance =
+      member.id === "YOU"
+        ? (ok ? VACUUM_WAVE.safeKnockback : VACUUM_WAVE.failKnockback)
+        : VACUUM_WAVE.safeKnockback;
+    const target = clampToArena(
+      member.x + Math.cos(memberAwayAngle) * knockbackDistance,
+      member.y + Math.sin(memberAwayAngle) * knockbackDistance
+    );
+    members[member.id] = {
+      fromX: member.x,
+      fromY: member.y,
+      toX: target.x,
+      toY: target.y,
+    };
+  }
+
+  state.knockbackAnimation = {
+    startAt: state.time,
+    duration: VACUUM_WAVE.animationDuration,
+    members,
+  };
+}
+
+function updateKnockbackAnimation() {
+  if (!state.knockbackAnimation) return;
+  const { startAt, duration, members } = state.knockbackAnimation;
+  const progress = Math.max(0, Math.min(1, (state.time - startAt) / duration));
+  const eased = 1 - (1 - progress) * (1 - progress);
+
+  for (const member of state.party) {
+    const motion = members[member.id];
+    member.x = motion.fromX + (motion.toX - motion.fromX) * eased;
+    member.y = motion.fromY + (motion.toY - motion.fromY) * eased;
+  }
+
+  if (progress >= 1) {
+    state.knockbackAnimation = null;
+    if (state.pendingFailureReason) {
+      const reason = state.pendingFailureReason;
+      state.pendingFailureReason = null;
+      showFailureResult(reason);
+    }
+  }
+}
+
 function resolveVacuumWave() {
   if (state.resolvedVacuumWave) return;
   state.resolvedVacuumWave = true;
@@ -923,34 +1028,32 @@ function resolveVacuumWave() {
   const requiredAngle = state.chaosWind.faceMode === "toward" ? towardAngle : awayAngle;
   const difference = angleDifference(state.player.facing, requiredAngle);
   const ok = difference <= VACUUM_WAVE.facingTolerance;
-  const knockbackDistance = ok ? VACUUM_WAVE.safeKnockback : VACUUM_WAVE.failKnockback;
-  const nextPosition = clampToArena(
-    state.player.x + Math.cos(awayAngle) * knockbackDistance,
-    state.player.y + Math.sin(awayAngle) * knockbackDistance
-  );
-
-  state.player.x = nextPosition.x;
-  state.player.y = nextPosition.y;
   state.vacuumOk = ok;
+  startKnockbackAnimation(ok);
+
+  if (!ok) {
+    state.pendingFailureReason = vacuumFailureReason();
+  }
 }
 
 function evaluateStackFailure() {
-  if (state.time < TIMINGS.stackResolveAt || state.stackFailure) return;
-  const npcs = state.party.filter((member) => member.id !== "YOU");
+  if (state.time < TIMINGS.stackGatherStartAt || state.stackResolved || state.stackFailure) return;
+  const stackNpcs = state.party.filter((member) => member.id !== "YOU");
+  const allNpcGathered = stackNpcs.every((member, index) => {
+    const target = stackGatherPoint(index, stackNpcs.length);
+    return Math.hypot(member.x - target.x, member.y - target.y) <= 10;
+  });
+  if (!allNpcGathered) return;
+
+  state.stackResolved = true;
+  state.stackResolvedAt = state.time;
+
   const nearestDistance = Math.min(
-    ...npcs.map((member) => Math.hypot(member.x - state.player.x, member.y - state.player.y))
+    ...stackNpcs.map((member) => Math.hypot(member.x - state.player.x, member.y - state.player.y))
   );
   state.stackFailure = nearestDistance > 72;
   if (state.stackFailure) {
-    state.running = false;
-    state.finished = true;
-    UI.reset.textContent = "リトライ";
-    if (SHOW_RESULT_MODAL) {
-      UI.resultKicker.textContent = "Duty Failed";
-      UI.resultTitle.textContent = "NG";
-      UI.resultReason.textContent = "頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。";
-      UI.resultOverlay.classList.remove("hidden");
-    }
+    showFailureResult("頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。");
   }
 }
 
@@ -1025,17 +1128,16 @@ function maybeFinish() {
 
   if (SHOW_RESULT_MODAL) {
     const finalOk = state.vacuumOk && !state.stackFailure && state.finalBurstFailures.length === 0;
-    UI.resultKicker.textContent = finalOk ? "Success" : "Duty Failed";
-    UI.resultTitle.textContent = finalOk ? "OK" : "NG";
-    UI.resultReason.textContent = finalOk
-      ? `真空波は成功。サイコロは ${state.player.diceValue} でした。`
-      : state.finalBurstFailures.length
+    renderResult(
+      finalOk ? "SUCESS" : "FAILED",
+      finalOk
+        ? ""
+        : state.finalBurstFailures.length
         ? `最終8本で巻き込みが発生しました。\n${formatFinalBurstFailures()}`
-        : state.stackFailure
-          ? "頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。"
-          : `真空波は失敗。サイコロは ${state.player.diceValue} でした。`;
-    UI.reset.textContent = "リトライ";
-    UI.resultOverlay.classList.remove("hidden");
+          : state.stackFailure
+            ? "頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。"
+            : vacuumFailureReason()
+    );
   }
 }
 
@@ -1046,13 +1148,16 @@ function tick(timestamp) {
 
   if (state.running) {
     state.time += dt;
-    const keyboardMoved = handleKeyboardMovement(dt);
-    if (!keyboardMoved) {
-      handleClickMovement(dt);
+    if (!state.knockbackAnimation) {
+      const keyboardMoved = handleKeyboardMovement(dt);
+      if (!keyboardMoved) {
+        handleClickMovement(dt);
+      }
     }
     if (state.time >= TIMINGS.vacuumResolveAt) {
       resolveVacuumWave();
     }
+    updateKnockbackAnimation();
     updateParty(dt);
     evaluateStackFailure();
     maybeFinish();
