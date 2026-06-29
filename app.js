@@ -1,0 +1,1115 @@
+const canvas = document.getElementById("arena");
+const ctx = canvas.getContext("2d");
+
+const UI = {
+  phase: document.getElementById("phaseLabel"),
+  time: document.getElementById("timeDisplay"),
+  position: document.getElementById("positionDisplay"),
+  facing: document.getElementById("facingDisplay"),
+  debuff: document.getElementById("debuffDisplay"),
+  target: document.getElementById("targetDisplay"),
+  playerInfoCard: document.getElementById("playerInfoCard"),
+  notesList: document.getElementById("notesList"),
+  introModal: document.getElementById("introModal"),
+  modalGuideToggle: document.getElementById("modalGuideToggle"),
+  startButton: document.getElementById("startButton"),
+  guideToggle: document.getElementById("guideToggleButton"),
+  resultOverlay: document.getElementById("resultOverlay"),
+  resultKicker: document.getElementById("resultKicker"),
+  resultTitle: document.getElementById("resultTitle"),
+  resultReason: document.getElementById("resultReason"),
+  closeResult: document.getElementById("closeResultButton"),
+  reset: document.getElementById("resetButton"),
+  retry: document.getElementById("retryButton"),
+};
+
+const SHOW_RESULT_MODAL = true;
+
+const ARENA = {
+  centerX: canvas.width / 2,
+  centerY: canvas.height / 2,
+  radius: 384,
+  markerRadius: 306,
+  numberRadius: 268,
+  observationRadius: 356,
+  finalPositionRadius: 334,
+};
+
+const PLAYER = {
+  radius: 18,
+  moveSpeed: 210,
+  clickStopDistance: 8,
+};
+
+const PARTY_IDS = ["YOU", "MT", "ST", "H1", "H2", "D1", "D2", "D3"];
+
+const MARKER_STYLE = {
+  A: { stroke: "#ff6b76", fill: "rgba(255, 107, 118, 0.16)", glow: "rgba(255, 107, 118, 0.30)" },
+  B: { stroke: "#ffe45f", fill: "rgba(255, 228, 95, 0.16)", glow: "rgba(255, 228, 95, 0.30)" },
+  C: { stroke: "#74c8ff", fill: "rgba(116, 200, 255, 0.16)", glow: "rgba(116, 200, 255, 0.30)" },
+  D: { stroke: "#ca7bff", fill: "rgba(202, 123, 255, 0.16)", glow: "rgba(202, 123, 255, 0.30)" },
+};
+
+const FIELD_MARKERS = [
+  { label: "A", angle: -Math.PI / 2 },
+  { label: "B", angle: 0 },
+  { label: "C", angle: Math.PI / 2 },
+  { label: "D", angle: Math.PI },
+];
+
+const NUMBER_MARKERS = [
+  { label: "1", angle: (-3 * Math.PI) / 4 },
+  { label: "2", angle: -Math.PI / 4 },
+  { label: "3", angle: Math.PI / 4 },
+  { label: "4", angle: (3 * Math.PI) / 4 },
+];
+
+const START_LABELS_BY_INDEX = ["A", "2", "B", "3", "C", "4", "D", "1"];
+
+const PAIR_POSITIONS = {
+  "1A": (-5 * Math.PI) / 8,
+  "A2": (-3 * Math.PI) / 8,
+  "2B": -Math.PI / 8,
+  "B3": Math.PI / 8,
+  "3C": (3 * Math.PI) / 8,
+  "C4": (5 * Math.PI) / 8,
+  "4D": (7 * Math.PI) / 8,
+  "D1": (-7 * Math.PI) / 8,
+};
+
+const FINAL_POSITION_TABLE = {
+  clockwise: {
+    "1": ["B3", "2B", "A2", "1A", "D1", "4D", "C4", "3C"],
+    "A": ["3C", "B3", "2B", "A2", "1A", "D1", "4D", "C4"],
+    "2": ["C4", "3C", "B3", "2B", "A2", "1A", "D1", "4D"],
+    "B": ["4D", "C4", "3C", "B3", "2B", "A2", "1A", "D1"],
+    "3": ["D1", "4D", "C4", "3C", "B3", "2B", "A2", "1A"],
+    "C": ["1A", "D1", "4D", "C4", "3C", "B3", "2B", "A2"],
+    "4": ["A2", "1A", "D1", "4D", "C4", "3C", "B3", "2B"],
+    "D": ["2B", "A2", "1A", "D1", "4D", "C4", "3C", "B3"],
+  },
+  counterclockwise: {
+    "1": ["3C", "C4", "4D", "D1", "1A", "A2", "2B", "B3"],
+    "A": ["C4", "4D", "D1", "1A", "A2", "2B", "B3", "3C"],
+    "2": ["4D", "D1", "1A", "A2", "2B", "B3", "3C", "C4"],
+    "B": ["D1", "1A", "A2", "2B", "B3", "3C", "C4", "4D"],
+    "3": ["1A", "A2", "2B", "B3", "3C", "C4", "4D", "D1"],
+    "C": ["A2", "2B", "B3", "3C", "C4", "4D", "D1", "1A"],
+    "4": ["2B", "B3", "3C", "C4", "4D", "D1", "1A", "A2"],
+    "D": ["B3", "3C", "C4", "4D", "D1", "1A", "A2", "2B"],
+  },
+};
+
+const EXDEATH_SPAWNS = [
+  { label: "A-B", angle: -Math.PI / 4 },
+  { label: "B-C", angle: Math.PI / 4 },
+  { label: "C-D", angle: (3 * Math.PI) / 4 },
+  { label: "D-A", angle: (-3 * Math.PI) / 4 },
+];
+
+const CHAOS_WIND_TYPES = {
+  front: {
+    key: "front",
+    label: "正面で受ける",
+    asset: "assets/wind-front.png",
+    faceMode: "toward",
+  },
+  back: {
+    key: "back",
+    label: "背面で受ける",
+    asset: "assets/wind-back.png",
+    faceMode: "away",
+  },
+};
+
+const TIMINGS = {
+  castStart: 0.8,
+  vacuumVisibleStart: 3.05,
+  vacuumResolveAt: 4.0,
+  observationStart: 0.8,
+  observationInterval: 1.1,
+  observationCount: 8,
+  diceAt: 6.0,
+  stackTelegraphAt: 7.0,
+  stackResolveAt: 8.0,
+  npcRelocateStartAt: 12.6,
+  finalBlastAt: 14.6,
+  finishAt: 16.2,
+};
+
+const FINAL_BURST_SOURCE_ORDER = [1, 8, 7, 6, 5, 4, 3, 2];
+
+const VACUUM_WAVE = {
+  safeKnockback: 96,
+  failKnockback: 228,
+  facingTolerance: Math.PI / 3,
+};
+
+const LINE_VISUAL = {
+  width: 60,
+  glowWidth: 108,
+  travelDuration: 0.56,
+  lingerDuration: 0.38,
+};
+
+const FINAL_BURST = {
+  duration: 1.5,
+};
+
+const INITIAL_POSITIONS = [
+  { x: ARENA.centerX - 60, y: ARENA.centerY + 210 },
+  { x: ARENA.centerX - 140, y: ARENA.centerY + 170 },
+  { x: ARENA.centerX - 20, y: ARENA.centerY + 150 },
+  { x: ARENA.centerX + 80, y: ARENA.centerY + 190 },
+  { x: ARENA.centerX + 145, y: ARENA.centerY + 120 },
+  { x: ARENA.centerX - 180, y: ARENA.centerY + 80 },
+  { x: ARENA.centerX + 20, y: ARENA.centerY + 240 },
+  { x: ARENA.centerX + 180, y: ARENA.centerY + 210 },
+];
+
+const keys = new Set();
+
+const state = {
+  running: false,
+  finished: false,
+  time: 0,
+  lastFrame: 0,
+  moveTarget: null,
+  player: null,
+  party: [],
+  resolvedVacuumWave: false,
+  pattern: null,
+  exdeath: null,
+  vacuumOk: null,
+  finalBurstResolved: false,
+  chaosWind: null,
+  finalBurstFailures: [],
+  stackFailure: false,
+  showGuides: true,
+};
+
+const chaosImage = new Image();
+chaosImage.src = "assets/chaos.png";
+
+const windImages = {
+  front: new Image(),
+  back: new Image(),
+};
+windImages.front.src = CHAOS_WIND_TYPES.front.asset;
+windImages.back.src = CHAOS_WIND_TYPES.back.asset;
+
+function canvasResponsiveScale() {
+  const width = canvas.clientWidth || canvas.width;
+  if (width <= 360) return 1.6;
+  if (width <= 420) return 1.42;
+  if (width <= 520) return 1.24;
+  return 1;
+}
+
+function pointOnCircle(radius, angle) {
+  return {
+    x: ARENA.centerX + Math.cos(angle) * radius,
+    y: ARENA.centerY + Math.sin(angle) * radius,
+  };
+}
+
+function exdeathPoint(angle) {
+  return pointOnCircle(235, angle);
+}
+
+function createExdeathSpawn() {
+  const choice = EXDEATH_SPAWNS[Math.floor(Math.random() * EXDEATH_SPAWNS.length)];
+  const point = exdeathPoint(choice.angle);
+  return {
+    label: choice.label,
+    x: point.x,
+    y: point.y,
+    radius: 34,
+  };
+}
+
+function createPlayer() {
+  const start = INITIAL_POSITIONS[0];
+  return {
+    id: "YOU",
+    x: start.x,
+    y: start.y,
+    facing: -Math.PI / 2,
+    debuff: "混沌の風",
+    diceValue: 1,
+    color: "#6bd4ff",
+  };
+}
+
+function createObservationPattern() {
+  return {
+    startIndex: Math.floor(Math.random() * 8),
+    direction: Math.random() < 0.5 ? 1 : -1,
+  };
+}
+
+function shuffled(items) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const swap = Math.floor(Math.random() * (i + 1));
+    [result[i], result[swap]] = [result[swap], result[i]];
+  }
+  return result;
+}
+
+function randomChaosWind() {
+  return Math.random() < 0.5 ? CHAOS_WIND_TYPES.front : CHAOS_WIND_TYPES.back;
+}
+
+function observationPoint(index) {
+  const angle = -Math.PI / 2 + (Math.PI / 4) * index;
+  return pointOnCircle(ARENA.observationRadius, angle);
+}
+
+function oppositeObservationPoint(index) {
+  return observationPoint((index + 4) % 8);
+}
+
+function observationLineAt(step) {
+  const pointIndex = (state.pattern.startIndex + step * state.pattern.direction + 800) % 8;
+  return {
+    pointIndex,
+    source: observationPoint(pointIndex),
+    target: oppositeObservationPoint(pointIndex),
+  };
+}
+
+function currentStartLabel() {
+  return START_LABELS_BY_INDEX[state.pattern.startIndex];
+}
+
+function currentRotationKey() {
+  return state.pattern.direction === 1 ? "clockwise" : "counterclockwise";
+}
+
+function finalPairLabelForDice(diceValue) {
+  const startLabel = currentStartLabel();
+  const rotationKey = currentRotationKey();
+  return FINAL_POSITION_TABLE[rotationKey][startLabel][diceValue - 1];
+}
+
+function finalPositionForDice(diceValue) {
+  const pairLabel = finalPairLabelForDice(diceValue);
+  return pointOnCircle(ARENA.finalPositionRadius, PAIR_POSITIONS[pairLabel]);
+}
+
+function createParty(player) {
+  const diceOrder = shuffled([1, 2, 3, 4, 5, 6, 7, 8]);
+  const controlledDice = diceOrder[0];
+  player.diceValue = controlledDice;
+
+  const party = [player];
+  for (let i = 1; i < PARTY_IDS.length; i += 1) {
+    const start = INITIAL_POSITIONS[i];
+    const diceValue = diceOrder[i];
+    const finalPosition = finalPositionForDice(diceValue);
+    party.push({
+      id: PARTY_IDS[i],
+      x: start.x,
+      y: start.y,
+      facing: -Math.PI / 2,
+      diceValue,
+      color: "#cfd7e8",
+      finalPosition,
+      finalPairLabel: finalPairLabelForDice(diceValue),
+    });
+  }
+  player.finalPosition = finalPositionForDice(controlledDice);
+  player.finalPairLabel = finalPairLabelForDice(controlledDice);
+  return party;
+}
+
+function resetSimulation() {
+  state.running = false;
+  state.finished = false;
+  state.time = 0;
+  state.lastFrame = 0;
+  state.moveTarget = null;
+  state.player = createPlayer();
+  state.resolvedVacuumWave = false;
+  state.pattern = createObservationPattern();
+  state.exdeath = createExdeathSpawn();
+  state.vacuumOk = null;
+  state.finalBurstResolved = false;
+  state.chaosWind = randomChaosWind();
+  state.finalBurstFailures = [];
+  state.stackFailure = false;
+  state.party = createParty(state.player);
+  UI.guideToggle.textContent = state.showGuides ? "ガイドOFF" : "ガイドON";
+  UI.reset.textContent = "リセット";
+  if (UI.modalGuideToggle) {
+    UI.modalGuideToggle.checked = state.showGuides;
+  }
+  UI.resultOverlay.classList.add("hidden");
+  syncHud();
+  draw();
+}
+
+function startSimulation() {
+  if (UI.modalGuideToggle) {
+    state.showGuides = UI.modalGuideToggle.checked;
+  }
+  resetSimulation();
+  state.running = true;
+  UI.introModal.classList.add("hidden");
+}
+
+function restartSimulation() {
+  startSimulation();
+}
+
+function currentTimelineIndex() {
+  const checkpoints = [
+    0,
+    TIMINGS.castStart,
+    TIMINGS.vacuumResolveAt,
+    TIMINGS.diceAt,
+    TIMINGS.stackResolveAt,
+    TIMINGS.npcRelocateStartAt,
+    TIMINGS.finalBlastAt,
+  ];
+  let index = 0;
+  for (let i = 0; i < checkpoints.length; i += 1) {
+    if (state.time >= checkpoints[i]) index = i;
+  }
+  return index;
+}
+
+function currentPhaseLabel() {
+  const labels = [
+    "開始待ち",
+    "真空波詠唱",
+    "ノックバック後",
+    "サイコロ付与",
+    "頭割り処理後",
+    "最終散開移動",
+    "同時8本発生",
+  ];
+  if (state.finished) return "シミュレーション終了";
+  return labels[currentTimelineIndex()];
+}
+
+function normalizeDegrees(radian) {
+  const degrees = (radian * 180) / Math.PI;
+  return (degrees + 360) % 360;
+}
+
+function angleDifference(a, b) {
+  let diff = a - b;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return Math.abs(diff);
+}
+
+function clampToArena(x, y) {
+  const dx = x - ARENA.centerX;
+  const dy = y - ARENA.centerY;
+  const distance = Math.hypot(dx, dy);
+  const maxDistance = ARENA.radius - PLAYER.radius - 8;
+  if (distance <= maxDistance || distance === 0) return { x, y };
+  const scale = maxDistance / distance;
+  return {
+    x: ARENA.centerX + dx * scale,
+    y: ARENA.centerY + dy * scale,
+  };
+}
+
+function updateFacing(dx, dy) {
+  if (dx === 0 && dy === 0) return;
+  state.player.facing = Math.atan2(dy, dx);
+}
+
+function handleKeyboardMovement(dt) {
+  let dx = 0;
+  let dy = 0;
+  if (keys.has("w") || keys.has("arrowup")) dy -= 1;
+  if (keys.has("s") || keys.has("arrowdown")) dy += 1;
+  if (keys.has("a") || keys.has("arrowleft")) dx -= 1;
+  if (keys.has("d") || keys.has("arrowright")) dx += 1;
+  if (dx === 0 && dy === 0) return false;
+
+  const length = Math.hypot(dx, dy);
+  const nextX = state.player.x + (dx / length) * PLAYER.moveSpeed * dt;
+  const nextY = state.player.y + (dy / length) * PLAYER.moveSpeed * dt;
+  const clamped = clampToArena(nextX, nextY);
+  updateFacing(clamped.x - state.player.x, clamped.y - state.player.y);
+  state.player.x = clamped.x;
+  state.player.y = clamped.y;
+  state.moveTarget = null;
+  return true;
+}
+
+function handleClickMovement(dt) {
+  if (!state.moveTarget) return;
+  const dx = state.moveTarget.x - state.player.x;
+  const dy = state.moveTarget.y - state.player.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= PLAYER.clickStopDistance) {
+    state.player.x = state.moveTarget.x;
+    state.player.y = state.moveTarget.y;
+    state.moveTarget = null;
+    return;
+  }
+
+  const step = Math.min(distance, PLAYER.moveSpeed * dt);
+  const nextX = state.player.x + (dx / distance) * step;
+  const nextY = state.player.y + (dy / distance) * step;
+  const clamped = clampToArena(nextX, nextY);
+  updateFacing(clamped.x - state.player.x, clamped.y - state.player.y);
+  state.player.x = clamped.x;
+  state.player.y = clamped.y;
+}
+
+function syncHud() {
+  UI.phase.textContent = currentPhaseLabel();
+  UI.time.textContent = state.showGuides ? `${state.time.toFixed(1)}s` : "—";
+  UI.position.textContent = state.showGuides ? `X ${state.player.x.toFixed(1)} / Y ${state.player.y.toFixed(1)}` : "—";
+  UI.facing.textContent = state.showGuides ? `${normalizeDegrees(state.player.facing).toFixed(0)}°` : "—";
+  const windLabel = state.chaosWind ? `混沌の風(${state.chaosWind.label})` : "混沌の風";
+  UI.debuff.textContent = state.showGuides ? `${windLabel} / ${state.player.diceValue}` : "—";
+  UI.target.textContent = state.showGuides
+    ? (state.moveTarget
+      ? `X ${state.moveTarget.x.toFixed(1)} / Y ${state.moveTarget.y.toFixed(1)}`
+      : `${state.player.finalPairLabel} へ移動`)
+    : "—";
+  UI.playerInfoCard.style.display = state.showGuides ? "grid" : "none";
+  UI.notesList.style.display = state.showGuides ? "block" : "none";
+}
+
+function activeObservationLines() {
+  const lines = [];
+  if (state.time < TIMINGS.observationStart) return lines;
+
+  const elapsed = state.time - TIMINGS.observationStart;
+  const latestIndex = Math.min(
+    TIMINGS.observationCount - 1,
+    Math.floor(elapsed / TIMINGS.observationInterval)
+  );
+
+  for (let step = 0; step <= latestIndex; step += 1) {
+    const startAt = TIMINGS.observationStart + step * TIMINGS.observationInterval;
+    const age = state.time - startAt;
+    const maxAge = LINE_VISUAL.travelDuration + LINE_VISUAL.lingerDuration;
+    if (age < 0 || age > maxAge) continue;
+    lines.push({
+      ...observationLineAt(step),
+      step,
+      age,
+    });
+  }
+  return lines;
+}
+
+function updateParty(dt) {
+  for (const member of state.party) {
+    if (member.id === "YOU") continue;
+    const target = npcTargetPosition(member);
+    const dx = target.x - member.x;
+    const dy = target.y - member.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 1) {
+      member.x = target.x;
+      member.y = target.y;
+      continue;
+    }
+    const step = Math.min(distance, 200 * dt);
+    member.x += (dx / distance) * step;
+    member.y += (dy / distance) * step;
+    member.facing = Math.atan2(dy, dx);
+  }
+}
+
+function stackGatherPoint(index, total) {
+  const awayAngle = Math.atan2(ARENA.centerY - state.exdeath.y, ARENA.centerX - state.exdeath.x);
+  const base = {
+    x: state.exdeath.x + Math.cos(awayAngle) * 94,
+    y: state.exdeath.y + Math.sin(awayAngle) * 94,
+  };
+  const perpendicular = awayAngle + Math.PI / 2;
+  const offset = (index - (total - 1) / 2) * 18;
+  return clampToArena(
+    base.x + Math.cos(perpendicular) * offset,
+    base.y + Math.sin(perpendicular) * offset
+  );
+}
+
+function npcTargetPosition(member) {
+  if (state.time >= TIMINGS.stackTelegraphAt && state.time < TIMINGS.npcRelocateStartAt) {
+    const npcs = state.party.filter((item) => item.id !== "YOU");
+    const index = npcs.findIndex((item) => item.id === member.id);
+    return stackGatherPoint(index, npcs.length);
+  }
+  if (state.time >= TIMINGS.npcRelocateStartAt) {
+    return member.finalPosition;
+  }
+  return { x: member.x, y: member.y };
+}
+
+function drawArenaBase() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const gradient = ctx.createRadialGradient(
+    ARENA.centerX,
+    ARENA.centerY,
+    50,
+    ARENA.centerX,
+    ARENA.centerY,
+    ARENA.radius
+  );
+  gradient.addColorStop(0, "#1d2431");
+  gradient.addColorStop(1, "#0d1118");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(ARENA.centerX, ARENA.centerY, ARENA.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  for (let ring = 1; ring <= 4; ring += 1) {
+    ctx.beginPath();
+    ctx.arc(ARENA.centerX, ARENA.centerY, ring * 72, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 16; i += 1) {
+    const angle = (Math.PI * 2 * i) / 16;
+    const x = ARENA.centerX + Math.cos(angle) * ARENA.radius;
+    const y = ARENA.centerY + Math.sin(angle) * ARENA.radius;
+    ctx.beginPath();
+    ctx.moveTo(ARENA.centerX, ARENA.centerY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawFieldMarkers() {
+  FIELD_MARKERS.forEach((marker) => {
+    const style = MARKER_STYLE[marker.label];
+    const point = pointOnCircle(ARENA.markerRadius, marker.angle);
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.fillStyle = style.glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = style.fill;
+    ctx.beginPath();
+    ctx.arc(0, 0, 26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.shadowColor = style.stroke;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = "#f4f1ea";
+    ctx.font = "700 22px 'Yu Gothic UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(marker.label, 0, 2);
+    ctx.restore();
+  });
+}
+
+function drawNumberMarkers() {
+  NUMBER_MARKERS.forEach((marker) => {
+    const point = pointOnCircle(ARENA.numberRadius, marker.angle);
+    const style = MARKER_STYLE[String(marker.label).replace("1", "A").replace("2", "B").replace("3", "C").replace("4", "D")];
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.fillStyle = style.glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = style.fill;
+    ctx.beginPath();
+    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.fillStyle = "#f4f1ea";
+    ctx.font = "700 18px 'Yu Gothic UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(marker.label, 0, 1);
+    ctx.restore();
+  });
+}
+
+function drawExdeath() {
+  ctx.save();
+  ctx.translate(state.exdeath.x, state.exdeath.y);
+  ctx.fillStyle = "rgba(184, 145, 255, 0.18)";
+  ctx.beginPath();
+  ctx.arc(0, 0, 56, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (chaosImage.complete && chaosImage.naturalWidth > 0) {
+    ctx.drawImage(chaosImage, -48, -48, 96, 96);
+  } else {
+    ctx.fillStyle = "#b99a5c";
+    ctx.beginPath();
+    ctx.arc(0, 0, state.exdeath.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawChaosWindPanel() {
+  const scale = canvasResponsiveScale();
+  const panelW = 116 * scale;
+  const panelH = 94 * scale;
+  const panelX = canvas.width - panelW - 28;
+  const panelY = 28;
+  const outerRadius = 18 * scale;
+  const innerRadius = 12 * scale;
+  const innerX = panelX + 12 * scale;
+  const innerY = panelY + 10 * scale;
+  const innerW = 92 * scale;
+  const innerH = 72 * scale;
+  const imageSize = 40 * scale;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(20, 24, 34, 0.88)";
+  ctx.beginPath();
+  ctx.roundRect(panelX, panelY, panelW, panelH, outerRadius);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  const activeImage = state.chaosWind?.key === "back" ? windImages.back : windImages.front;
+  ctx.fillStyle = "rgba(255,255,255,0.04)";
+  ctx.beginPath();
+  ctx.roundRect(innerX, innerY, innerW, innerH, innerRadius);
+  ctx.fill();
+  if (activeImage.complete && activeImage.naturalWidth > 0) {
+    ctx.drawImage(
+      activeImage,
+      panelX + (panelW - imageSize) / 2,
+      panelY + 16 * scale,
+      imageSize,
+      imageSize
+    );
+  }
+  ctx.fillStyle = "#ffe45f";
+  ctx.font = `700 ${12 * scale}px 'Yu Gothic UI', sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(state.chaosWind?.label || "", panelX + panelW / 2, panelY + 73 * scale);
+  ctx.restore();
+}
+
+function drawVacuumWave() {
+  if (state.time < TIMINGS.vacuumVisibleStart || state.time > TIMINGS.vacuumResolveAt + 0.25) return;
+
+  const progress = Math.min(
+    1,
+    (state.time - TIMINGS.vacuumVisibleStart) / (TIMINGS.vacuumResolveAt - TIMINGS.vacuumVisibleStart)
+  );
+  const radius = 90 + progress * 330;
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(173, 142, 255, 0.82)";
+  ctx.lineWidth = 18;
+  ctx.beginPath();
+  ctx.arc(state.exdeath.x, state.exdeath.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(173, 142, 255, 0.28)";
+  ctx.lineWidth = 40;
+  ctx.beginPath();
+  ctx.arc(state.exdeath.x, state.exdeath.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPassingLine(source, target, age, emphasis = 1) {
+  const totalDuration = LINE_VISUAL.travelDuration + LINE_VISUAL.lingerDuration;
+  const clampedAge = Math.max(0, Math.min(totalDuration, age));
+  const progress = Math.min(1, clampedAge / LINE_VISUAL.travelDuration);
+  const fadeProgress = Math.max(0, clampedAge - LINE_VISUAL.travelDuration) / LINE_VISUAL.lingerDuration;
+  const tailProgress = Math.max(0, fadeProgress);
+
+  const headX = source.x + (target.x - source.x) * progress;
+  const headY = source.y + (target.y - source.y) * progress;
+  const tailX = source.x + (target.x - source.x) * tailProgress;
+  const tailY = source.y + (target.y - source.y) * tailProgress;
+
+  ctx.save();
+  ctx.lineCap = "butt";
+  ctx.strokeStyle = `rgba(216, 168, 255, ${(0.30 - fadeProgress * 0.18) * emphasis})`;
+  ctx.lineWidth = LINE_VISUAL.glowWidth;
+  ctx.beginPath();
+  ctx.moveTo(tailX, tailY);
+  ctx.lineTo(headX, headY);
+  ctx.stroke();
+
+  ctx.strokeStyle = `rgba(180, 74, 242, ${(0.76 - fadeProgress * 0.34) * emphasis})`;
+  ctx.lineWidth = LINE_VISUAL.width;
+  ctx.beginPath();
+  ctx.moveTo(tailX, tailY);
+  ctx.lineTo(headX, headY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawObservation() {
+  const lines = activeObservationLines();
+  for (const line of lines) {
+    drawPassingLine(line.source, line.target, line.age, 0.96);
+  }
+}
+
+function drawFinalBurst() {
+  if (state.time < TIMINGS.finalBlastAt) return;
+  const age = state.time - TIMINGS.finalBlastAt;
+  if (age > FINAL_BURST.duration) return;
+
+  for (const member of state.party) {
+    const line = finalBurstLineForMember(member);
+    const emphasis = member.id === "YOU" ? 1.08 : 0.76;
+    drawPassingLine(line.source, line.target, age, emphasis);
+  }
+}
+
+function drawStackTelegraph() {
+  if (state.time < TIMINGS.stackTelegraphAt || state.time > TIMINGS.stackResolveAt + 0.15) return;
+
+  const player = state.player;
+  const resolving = state.time >= TIMINGS.stackResolveAt;
+  const radius = resolving ? 96 : 76;
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.strokeStyle = resolving ? "rgba(255, 199, 92, 0.9)" : "rgba(255, 255, 255, 0.82)";
+  ctx.lineWidth = resolving ? 14 : 8;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.font = "700 18px 'Yu Gothic UI', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("頭割り", 0, -96);
+  ctx.restore();
+}
+
+function diceLayout(value) {
+  const layouts = {
+    1: { width: 30, points: [[0, 0]] },
+    2: { width: 38, points: [[-8, 0], [8, 0]] },
+    3: { width: 40, points: [[0, -10], [-10, 8], [10, 8]] },
+    4: { width: 40, points: [[-10, -10], [10, -10], [-10, 10], [10, 10]] },
+    5: { width: 62, points: [[-24, 0], [4, -10], [20, -10], [4, 10], [20, 10]] },
+    6: { width: 70, points: [[-20, -10], [-30, 8], [-10, 8], [8, -10], [28, -10], [28, 8]] },
+    7: { width: 88, points: [[-24, -10], [-34, 8], [-14, 8], [12, -10], [32, -10], [12, 10], [32, 10]] },
+    8: { width: 96, points: [[-30, -10], [-30, 10], [-10, -10], [-10, 10], [14, -10], [14, 10], [34, -10], [34, 10]] },
+  };
+  return layouts[value];
+}
+
+function drawDicePips(value, centerX, centerY, color) {
+  const blue = "#8fd1ff";
+  const red = "#ff6c6c";
+  const pipColor = color || (value % 2 === 1 ? blue : red);
+  const layout = diceLayout(value);
+
+  layout.points.forEach(([dx, dy]) => {
+    ctx.save();
+    ctx.translate(centerX + dx, centerY + dy);
+    ctx.shadowColor = pipColor;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = pipColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  return layout.width;
+}
+
+function drawDiceMarkerFor(member) {
+  if (state.time < TIMINGS.diceAt) return;
+  const lift = 76;
+  const x = member.x;
+  const y = member.y - lift;
+  const width = Math.max(60, diceLayout(member.diceValue).width + 24);
+  ctx.save();
+  ctx.fillStyle = "rgba(10, 12, 18, 0.92)";
+  ctx.beginPath();
+  ctx.roundRect(x - width / 2, y - 26, width, 52, 18);
+  ctx.fill();
+  ctx.strokeStyle = member.id === "YOU" ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  drawDicePips(member.diceValue, x, y);
+  ctx.restore();
+}
+
+function drawMoveTarget() {
+  if (!state.moveTarget) return;
+  ctx.save();
+  ctx.translate(state.moveTarget.x, state.moveTarget.y);
+  ctx.strokeStyle = "rgba(104, 215, 178, 0.82)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(0, 0, 16, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-24, 0);
+  ctx.lineTo(24, 0);
+  ctx.moveTo(0, -24);
+  ctx.lineTo(0, 24);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawMember(member) {
+  ctx.save();
+  ctx.translate(member.x, member.y);
+  ctx.fillStyle = member.color;
+  ctx.beginPath();
+  ctx.arc(0, 0, PLAYER.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  const facing = member.id === "YOU" ? state.player.facing : member.facing;
+  ctx.strokeStyle = member.id === "YOU" ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.55)";
+  ctx.lineWidth = member.id === "YOU" ? 4 : 3;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(Math.cos(facing) * 26, Math.sin(facing) * 26);
+  ctx.stroke();
+
+  if (member.id === "YOU") {
+    ctx.fillStyle = "#f4f1ea";
+    ctx.font = "700 13px 'Yu Gothic UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(member.id, 0, 38);
+  }
+  ctx.restore();
+}
+
+function draw() {
+  drawArenaBase();
+  drawFieldMarkers();
+  drawNumberMarkers();
+  drawObservation();
+  drawFinalBurst();
+  drawExdeath();
+  drawVacuumWave();
+  drawStackTelegraph();
+  drawMoveTarget();
+  for (const member of state.party) {
+    drawMember(member);
+  }
+  for (const member of state.party) {
+    drawDiceMarkerFor(member);
+  }
+  drawChaosWindPanel();
+}
+
+function resolveVacuumWave() {
+  if (state.resolvedVacuumWave) return;
+  state.resolvedVacuumWave = true;
+
+  const towardAngle = Math.atan2(state.exdeath.y - state.player.y, state.exdeath.x - state.player.x);
+  const awayAngle = Math.atan2(state.player.y - state.exdeath.y, state.player.x - state.exdeath.x);
+  const requiredAngle = state.chaosWind.faceMode === "toward" ? towardAngle : awayAngle;
+  const difference = angleDifference(state.player.facing, requiredAngle);
+  const ok = difference <= VACUUM_WAVE.facingTolerance;
+  const knockbackDistance = ok ? VACUUM_WAVE.safeKnockback : VACUUM_WAVE.failKnockback;
+  const nextPosition = clampToArena(
+    state.player.x + Math.cos(awayAngle) * knockbackDistance,
+    state.player.y + Math.sin(awayAngle) * knockbackDistance
+  );
+
+  state.player.x = nextPosition.x;
+  state.player.y = nextPosition.y;
+  state.vacuumOk = ok;
+}
+
+function evaluateStackFailure() {
+  if (state.time < TIMINGS.stackResolveAt || state.stackFailure) return;
+  const npcs = state.party.filter((member) => member.id !== "YOU");
+  const nearestDistance = Math.min(
+    ...npcs.map((member) => Math.hypot(member.x - state.player.x, member.y - state.player.y))
+  );
+  state.stackFailure = nearestDistance > 72;
+  if (state.stackFailure) {
+    state.running = false;
+    state.finished = true;
+    UI.reset.textContent = "リトライ";
+    if (SHOW_RESULT_MODAL) {
+      UI.resultKicker.textContent = "Duty Failed";
+      UI.resultTitle.textContent = "NG";
+      UI.resultReason.textContent = "頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。";
+      UI.resultOverlay.classList.remove("hidden");
+    }
+  }
+}
+
+function finalBurstLineForMember(member) {
+  const sourceSequence = FINAL_BURST_SOURCE_ORDER[member.diceValue - 1];
+  const sourceLine = observationLineAt(sourceSequence - 1);
+  const dx = member.x - sourceLine.source.x;
+  const dy = member.y - sourceLine.source.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const unitX = dx / length;
+  const unitY = dy / length;
+  const farPoint = clampToArena(
+    member.x + unitX * ARENA.radius * 1.2,
+    member.y + unitY * ARENA.radius * 1.2
+  );
+  return {
+    source: sourceLine.source,
+    target: farPoint,
+    intendedTarget: { x: member.x, y: member.y },
+    targetId: member.id,
+  };
+}
+
+function distanceToSegment(point, start, end) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq === 0) return Math.hypot(point.x - start.x, point.y - start.y);
+  let t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = start.x + dx * t;
+  const projY = start.y + dy * t;
+  return Math.hypot(point.x - projX, point.y - projY);
+}
+
+function evaluateFinalBurstCollisions() {
+  const failures = [];
+  for (const casterTarget of state.party) {
+    const line = finalBurstLineForMember(casterTarget);
+    for (const other of state.party) {
+      if (other.id === casterTarget.id) continue;
+      const distance = distanceToSegment({ x: other.x, y: other.y }, line.source, line.target);
+      if (distance <= LINE_VISUAL.width * 0.65) {
+        failures.push(`${casterTarget.id}->${other.id}`);
+      }
+    }
+  }
+  state.finalBurstFailures = failures;
+}
+
+function diceLabelForMemberId(memberId) {
+  const member = state.party.find((item) => item.id === memberId);
+  if (!member) return "サイコロ?";
+  return member.id === "YOU" ? `サイコロ${member.diceValue}(YOU)` : `サイコロ${member.diceValue}`;
+}
+
+function formatFinalBurstFailures() {
+  return state.finalBurstFailures
+    .map((entry) => {
+      const [fromId, toId] = entry.split("->");
+      return `${diceLabelForMemberId(fromId)} -> ${diceLabelForMemberId(toId)}`;
+    })
+    .join("\n");
+}
+
+function maybeFinish() {
+  if (state.finalBurstResolved || state.time < TIMINGS.finishAt) return;
+  state.finalBurstResolved = true;
+  evaluateFinalBurstCollisions();
+  state.running = false;
+  state.finished = true;
+
+  if (SHOW_RESULT_MODAL) {
+    const finalOk = state.vacuumOk && !state.stackFailure && state.finalBurstFailures.length === 0;
+    UI.resultKicker.textContent = finalOk ? "Success" : "Duty Failed";
+    UI.resultTitle.textContent = finalOk ? "OK" : "NG";
+    UI.resultReason.textContent = finalOk
+      ? `真空波は成功。サイコロは ${state.player.diceValue} でした。`
+      : state.finalBurstFailures.length
+        ? `最終8本で巻き込みが発生しました。\n${formatFinalBurstFailures()}`
+        : state.stackFailure
+          ? "頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。"
+          : `真空波は失敗。サイコロは ${state.player.diceValue} でした。`;
+    UI.reset.textContent = "リトライ";
+    UI.resultOverlay.classList.remove("hidden");
+  }
+}
+
+function tick(timestamp) {
+  if (state.lastFrame === 0) state.lastFrame = timestamp;
+  const dt = Math.min((timestamp - state.lastFrame) / 1000, 0.05);
+  state.lastFrame = timestamp;
+
+  if (state.running) {
+    state.time += dt;
+    const keyboardMoved = handleKeyboardMovement(dt);
+    if (!keyboardMoved) {
+      handleClickMovement(dt);
+    }
+    if (state.time >= TIMINGS.vacuumResolveAt) {
+      resolveVacuumWave();
+    }
+    updateParty(dt);
+    evaluateStackFailure();
+    maybeFinish();
+  }
+
+  syncHud();
+  draw();
+  requestAnimationFrame(tick);
+}
+
+function canvasPointFromEvent(event) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (event.clientX - rect.left) * scaleX;
+  const y = (event.clientY - rect.top) * scaleY;
+  return clampToArena(x, y);
+}
+
+window.addEventListener("keydown", (event) => {
+  const key = event.key.toLowerCase();
+  if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
+    keys.add(key);
+    event.preventDefault();
+  }
+});
+
+window.addEventListener("keyup", (event) => {
+  keys.delete(event.key.toLowerCase());
+});
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (!state.running) return;
+  state.moveTarget = canvasPointFromEvent(event);
+});
+
+UI.startButton.addEventListener("click", startSimulation);
+UI.reset.addEventListener("click", restartSimulation);
+UI.retry.addEventListener("click", restartSimulation);
+UI.closeResult.addEventListener("click", () => {
+  UI.resultOverlay.classList.add("hidden");
+});
+UI.guideToggle.addEventListener("click", () => {
+  state.showGuides = !state.showGuides;
+  UI.guideToggle.textContent = state.showGuides ? "ガイドOFF" : "ガイドON";
+  if (UI.modalGuideToggle) {
+    UI.modalGuideToggle.checked = state.showGuides;
+  }
+  draw();
+});
+if (UI.modalGuideToggle) {
+  UI.modalGuideToggle.addEventListener("change", () => {
+    state.showGuides = UI.modalGuideToggle.checked;
+    UI.guideToggle.textContent = state.showGuides ? "ガイドOFF" : "ガイドON";
+    draw();
+  });
+}
+
+resetSimulation();
+requestAnimationFrame(tick);
