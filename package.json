@@ -4,6 +4,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "deploy:prepare": "powershell -ExecutionPolicy Bypass -File scripts/update-deploy-version.ps1",
     "start": "node server.js",
     "test": "node --check app.js && node --check server.js"
   }

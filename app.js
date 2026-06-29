@@ -25,6 +25,7 @@ const UI = {
 };
 
 const SHOW_RESULT_MODAL = true;
+const DEBUG_SUPPRESS_RESULT_MODAL = false;
 
 const ARENA = {
   centerX: canvas.width / 2,
@@ -289,8 +290,32 @@ function currentStartLabel() {
   return START_LABELS_BY_INDEX[state.pattern.startIndex];
 }
 
+function currentEndLabel() {
+  return START_LABELS_BY_INDEX[(state.pattern.startIndex + 4) % 8];
+}
+
 function currentRotationKey() {
   return state.pattern.direction === 1 ? "clockwise" : "counterclockwise";
+}
+
+function rotationLabel(rotationKey) {
+  return rotationKey === "clockwise" ? "時計回り" : "反時計回り";
+}
+
+function oppositeRotationKey(rotationKey) {
+  return rotationKey === "clockwise" ? "counterclockwise" : "clockwise";
+}
+
+function successResultSummary() {
+  const startLabel = currentStartLabel();
+  const endLabel = currentEndLabel();
+  const rotationKey = currentRotationKey();
+  const scatterRotation = oppositeRotationKey(rotationKey);
+
+  return [
+    `アルテマブラスター：${startLabel} -> ${endLabel} / ${rotationLabel(rotationKey)}（サイコロ${rotationLabel(scatterRotation)}）`,
+    `サイコロ番号：${state.player.diceValue} ( ${state.player.finalPairLabel} )`,
+  ].join("\n");
 }
 
 function finalPairLabelForDice(diceValue) {
@@ -728,10 +753,12 @@ function drawChaosWindPanel() {
       imageSize
     );
   }
-  ctx.fillStyle = "#ffe45f";
-  ctx.font = `700 ${12 * scale}px 'Yu Gothic UI', sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillText(state.chaosWind?.label || "", panelX + panelW / 2, panelY + 73 * scale);
+  if (state.showGuides) {
+    ctx.fillStyle = "#ffe45f";
+    ctx.font = `700 ${12 * scale}px 'Yu Gothic UI', sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(state.chaosWind?.label || "", panelX + panelW / 2, panelY + 73 * scale);
+  }
   ctx.restore();
 }
 
@@ -950,7 +977,7 @@ function renderResult(status, reason = "") {
   state.running = false;
   state.finished = true;
   UI.reset.textContent = "リトライ";
-  if (!SHOW_RESULT_MODAL) return;
+  if (!SHOW_RESULT_MODAL || DEBUG_SUPPRESS_RESULT_MODAL) return;
 
   UI.resultKicker.textContent = "";
   UI.resultTitle.textContent = status;
@@ -1131,7 +1158,7 @@ function maybeFinish() {
     renderResult(
       finalOk ? "SUCESS" : "FAILED",
       finalOk
-        ? ""
+        ? successResultSummary()
         : state.finalBurstFailures.length
         ? `最終8本で巻き込みが発生しました。\n${formatFinalBurstFailures()}`
           : state.stackFailure
