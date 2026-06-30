@@ -1061,7 +1061,8 @@ function drawChaosWindPanel() {
   const innerY = panelY + 10 * scale;
   const innerW = 92 * scale;
   const innerH = 72 * scale;
-  const imageSize = 40 * scale;
+  const imageMaxW = 56 * scale;
+  const imageMaxH = 40 * scale;
 
   ctx.save();
   ctx.fillStyle = "rgba(20, 24, 34, 0.88)";
@@ -1078,12 +1079,18 @@ function drawChaosWindPanel() {
   ctx.roundRect(innerX, innerY, innerW, innerH, innerRadius);
   ctx.fill();
   if (activeImage.complete && activeImage.naturalWidth > 0) {
+    const imageScale = Math.min(
+      imageMaxW / activeImage.naturalWidth,
+      imageMaxH / activeImage.naturalHeight
+    );
+    const drawW = activeImage.naturalWidth * imageScale;
+    const drawH = activeImage.naturalHeight * imageScale;
     ctx.drawImage(
       activeImage,
-      panelX + (panelW - imageSize) / 2,
-      panelY + 16 * scale,
-      imageSize,
-      imageSize
+      panelX + (panelW - drawW) / 2,
+      panelY + 16 * scale + (imageMaxH - drawH) / 2,
+      drawW,
+      drawH
     );
   }
   if (state.showGuides) {
