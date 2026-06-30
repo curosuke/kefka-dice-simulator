@@ -2,6 +2,18 @@ const canvas = document.getElementById("arena");
 const ctx = canvas.getContext("2d");
 
 const UI = {
+  heroEyebrow: document.getElementById("heroEyebrow"),
+  heroTitle: document.getElementById("heroTitle"),
+  hintMoveKeys: document.getElementById("hintMoveKeys"),
+  hintMoveClick: document.getElementById("hintMoveClick"),
+  hintFacingLock: document.getElementById("hintFacingLock"),
+  hintPanelLabel: document.getElementById("hintPanelLabel"),
+  timeLabel: document.getElementById("timeLabel"),
+  positionLabel: document.getElementById("positionLabel"),
+  facingLabel: document.getElementById("facingLabel"),
+  debuffLabel: document.getElementById("debuffLabel"),
+  targetLabel: document.getElementById("targetLabel"),
+  timelinePanelLabel: document.getElementById("timelinePanelLabel"),
   time: document.getElementById("timeDisplay"),
   position: document.getElementById("positionDisplay"),
   facing: document.getElementById("facingDisplay"),
@@ -10,9 +22,17 @@ const UI = {
   playerInfoCard: document.getElementById("playerInfoCard"),
   timelineList: document.getElementById("timelineList"),
   timelineItems: Array.from(document.querySelectorAll("#timelineList li")),
+  notesPanelLabel: document.getElementById("notesPanelLabel"),
   notesList: document.getElementById("notesList"),
   introModal: document.getElementById("introModal"),
+  modalEyebrow: document.getElementById("modalEyebrow"),
+  modalTitle: document.getElementById("modalTitle"),
+  modalCopy: document.getElementById("modalCopy"),
+  modalControlHint: document.getElementById("modalControlHint"),
+  languageLabel: document.getElementById("languageLabel"),
+  localeRadios: Array.from(document.querySelectorAll('input[name="locale"]')),
   modalGuideToggle: document.getElementById("modalGuideToggle"),
+  guideToggleLabel: document.getElementById("guideToggleLabel"),
   startButton: document.getElementById("startButton"),
   guideToggle: document.getElementById("guideToggleButton"),
   resultOverlay: document.getElementById("resultOverlay"),
@@ -26,6 +46,242 @@ const UI = {
 
 const SHOW_RESULT_MODAL = true;
 const DEBUG_SUPPRESS_RESULT_MODAL = false;
+const LOCALE_STORAGE_KEY = "kefca-p3-simulator-locale";
+
+const TRANSLATIONS = {
+  ja: {
+    documentTitle: "絶妖精乱舞 P3 アルテマブラスター",
+    heroEyebrow: "KEFCA P3 SIMULATOR",
+    heroTitle: "絶妖精乱舞 P3 シミュレータ",
+    arenaAriaLabel: "アルテマブラスター戦闘フィールド",
+    hintMoveKeys: "WASD / 矢印で移動",
+    hintMoveClick: "クリックで移動先指定",
+    hintFacingLock: "向きは最後に移動した方向で固定",
+    hintPanelLabel: "HINT",
+    timeLabel: "時間",
+    positionLabel: "位置",
+    facingLabel: "向き",
+    debuffLabel: "混沌の風",
+    targetLabel: "移動先",
+    timelinePanelLabel: "TIMELINE",
+    notesPanelLabel: "Notes",
+    timeline: [
+      "開始待ち",
+      "真空波詠唱",
+      "真空波ノックバック",
+      "サイコロ予兆付与",
+      "頭割り処理",
+      "サイコロ散会",
+      "アルテマブラスター発動",
+    ],
+    notes: [
+      "真空波はエクスデス基準で背面受けなら OK",
+      "向きを誤るとノックバック距離が伸びて NG",
+      "並走するケフカの外周観察で開始位置と回転方向を覚える",
+    ],
+    modalEyebrow: "KEFCA P3 SIMULATOR",
+    modalTitle: "絶妖精乱舞 P3 シミュレータ",
+    modalCopy:
+      "Phase3の真空波詠唱～アルテマブラスターのサイコロ散会までをイメトレするためのシミュレータです。\nタンクLB法を前提として、エクスデスの出現位置に応じて正しい向きで混沌の風を受けて、ノックバック後に頭割りに参加し、サイコロマーカーの付与に応じた散会位置に移動してください。",
+    modalControlHint: "WASDもしくはクリックで自キャラを移動できます。",
+    languageLabel: "言語",
+    guideToggleLabel: "ガイドを表示する",
+    startButton: "開始",
+    retryButton: "リトライ",
+    resetButton: "リセット",
+    guideOn: "ガイドON",
+    guideOff: "ガイドOFF",
+    receiveFront: "正面で受ける",
+    receiveBack: "背面で受ける",
+    moveTo: (pair) => `${pair} へ移動`,
+    vacuumWave: "真空波",
+    stack: "頭割り",
+    clockwise: "時計回り",
+    counterclockwise: "反時計回り",
+    successSummary: (start, end, rotation, scatter, dice, pair) =>
+      `アルテマブラスター：${start} -> ${end} / ${rotation}（サイコロ${scatter}）\nサイコロ番号：${dice} ( ${pair} )`,
+    vacuumFailureFront: "真空波は失敗。混沌の風は正面で受ける必要がありました。",
+    vacuumFailureBack: "真空波は失敗。混沌の風は背面で受ける必要がありました。",
+    stackFailure: "頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。",
+    finalBurstFailurePrefix: "最終8本で巻き込みが発生しました。",
+    diceLabel: (value, isYou) => (isYou ? `サイコロ${value}(YOU)` : `サイコロ${value}`),
+    closeResultAria: "閉じる",
+  },
+  en: {
+    documentTitle: "Futures Rewritten P3 Ultima Blaster",
+    heroEyebrow: "KEFCA P3 SIMULATOR",
+    heroTitle: "Futures Rewritten P3 Simulator",
+    arenaAriaLabel: "Ultima Blaster training arena",
+    hintMoveKeys: "Move with WASD / arrow keys",
+    hintMoveClick: "Click to set a movement target",
+    hintFacingLock: "Facing follows your last movement direction",
+    hintPanelLabel: "HINT",
+    timeLabel: "Time",
+    positionLabel: "Position",
+    facingLabel: "Facing",
+    debuffLabel: "Chaos Wind",
+    targetLabel: "Target",
+    timelinePanelLabel: "TIMELINE",
+    notesPanelLabel: "Notes",
+    timeline: [
+      "Awaiting Start",
+      "Vacuum Wave Cast",
+      "Vacuum Wave Knockback",
+      "Dice Marker Applied",
+      "Stack Resolution",
+      "Dice Spread",
+      "Ultima Blaster",
+    ],
+    notes: [
+      "Vacuum Wave is safe if you resolve it correctly relative to Exdeath.",
+      "Incorrect facing causes excessive knockback and failure.",
+      "Watch Kefka's outer pattern to identify the starting point and rotation.",
+    ],
+    modalEyebrow: "KEFCA P3 SIMULATOR",
+    modalTitle: "Futures Rewritten P3 Simulator",
+    modalCopy:
+      "A simulator for practicing the sequence from Vacuum Wave through the Ultima Blaster dice spread in Phase 3.\nBuilt around the tank LB strategy: resolve Chaos Wind with the correct facing based on Exdeath's spawn, join the stack after knockback, and move to the proper spread position for your dice marker.",
+    modalControlHint: "Move your character with WASD or click-to-move.",
+    languageLabel: "Language",
+    guideToggleLabel: "Show guides",
+    startButton: "Start",
+    retryButton: "Retry",
+    resetButton: "Reset",
+    guideOn: "Guide ON",
+    guideOff: "Guide OFF",
+    receiveFront: "Face front",
+    receiveBack: "Face back",
+    moveTo: (pair) => `Move to ${pair}`,
+    vacuumWave: "Vacuum Wave",
+    stack: "Stack",
+    clockwise: "Clockwise",
+    counterclockwise: "Counterclockwise",
+    successSummary: (start, end, rotation, scatter, dice, pair) =>
+      `Ultima Blaster: ${start} -> ${end} / ${rotation} (dice ${scatter})\nDice number: ${dice} ( ${pair} )`,
+    vacuumFailureFront: "Vacuum Wave failed. Chaos Wind required a front-facing resolve.",
+    vacuumFailureBack: "Vacuum Wave failed. Chaos Wind required a back-facing resolve.",
+    stackFailure: "Stack failed. You were not overlapping the party when the stack resolved.",
+    finalBurstFailurePrefix: "The final eight Ultima Blasters clipped other players.",
+    diceLabel: (value, isYou) => (isYou ? `Dice ${value} (YOU)` : `Dice ${value}`),
+    closeResultAria: "Close",
+  },
+  zh: {
+    documentTitle: "Futures Rewritten P3 究极爆裂",
+    heroEyebrow: "KEFCA P3 SIMULATOR",
+    heroTitle: "Futures Rewritten P3 模拟器",
+    arenaAriaLabel: "究极爆裂训练场",
+    hintMoveKeys: "WASD / 方向键移动",
+    hintMoveClick: "点击指定移动位置",
+    hintFacingLock: "朝向固定为最后一次移动的方向",
+    hintPanelLabel: "HINT",
+    timeLabel: "时间",
+    positionLabel: "位置",
+    facingLabel: "朝向",
+    debuffLabel: "混沌之风",
+    targetLabel: "移动目标",
+    timelinePanelLabel: "TIMELINE",
+    notesPanelLabel: "NOTES",
+    timeline: [
+      "等待开始",
+      "真空波咏唱",
+      "真空波击退",
+      "骰子标记附加",
+      "分摊处理",
+      "骰子散开",
+      "究极爆裂发动",
+    ],
+    notes: [
+      "只要按艾克斯迪司为基准正确处理真空波即可通过。",
+      "朝向错误会导致击退距离过长并判定失败。",
+      "同时观察凯夫卡在外周的突进，记住起点与旋转方向。",
+    ],
+    modalEyebrow: "KEFCA P3 SIMULATOR",
+    modalTitle: "Futures Rewritten P3 模拟器",
+    modalCopy:
+      "用于练习 Phase 3 从真空波咏唱到究极爆裂骰子散开的模拟器。\n以前排坦克 LB 处理为前提，请根据艾克斯迪司的出现位置，以正确朝向处理混沌之风，在击退后参加分摊，并根据骰子标记移动到对应散开位置。",
+    modalControlHint: "可使用 WASD 或点击移动角色。",
+    languageLabel: "语言",
+    guideToggleLabel: "显示指引",
+    startButton: "开始",
+    retryButton: "重试",
+    resetButton: "重置",
+    guideOn: "指引ON",
+    guideOff: "指引OFF",
+    receiveFront: "正面承伤",
+    receiveBack: "背面承伤",
+    moveTo: (pair) => `移动到 ${pair}`,
+    vacuumWave: "真空波",
+    stack: "分摊",
+    clockwise: "顺时针",
+    counterclockwise: "逆时针",
+    successSummary: (start, end, rotation, scatter, dice, pair) =>
+      `究极爆裂：${start} -> ${end} / ${rotation}（骰子${scatter}）\n骰子编号：${dice} ( ${pair} )`,
+    vacuumFailureFront: "真空波处理失败。混沌之风需要以正面承伤。",
+    vacuumFailureBack: "真空波处理失败。混沌之风需要以背面承伤。",
+    stackFailure: "分摊失败。分摊结算时你没有和队友重叠。",
+    finalBurstFailurePrefix: "最后八道究极爆裂发生了卷入。",
+    diceLabel: (value, isYou) => (isYou ? `骰子${value}(YOU)` : `骰子${value}`),
+    closeResultAria: "关闭",
+  },
+  ko: {
+    documentTitle: "Futures Rewritten P3 알테마 블래스터",
+    heroEyebrow: "KEFCA P3 SIMULATOR",
+    heroTitle: "Futures Rewritten P3 시뮬레이터",
+    arenaAriaLabel: "알테마 블래스터 연습 필드",
+    hintMoveKeys: "WASD / 방향키로 이동",
+    hintMoveClick: "클릭으로 이동 위치 지정",
+    hintFacingLock: "방향은 마지막으로 이동한 쪽으로 고정",
+    hintPanelLabel: "HINT",
+    timeLabel: "시간",
+    positionLabel: "위치",
+    facingLabel: "방향",
+    debuffLabel: "혼돈의 바람",
+    targetLabel: "이동 위치",
+    timelinePanelLabel: "TIMELINE",
+    notesPanelLabel: "NOTES",
+    timeline: [
+      "시작 대기",
+      "진공파 시전",
+      "진공파 넉백",
+      "주사위 징 부여",
+      "쉐어 처리",
+      "주사위 산개",
+      "알테마 블래스터 발동",
+    ],
+    notes: [
+      "엑스데스를 기준으로 진공파를 올바르게 처리하면 통과입니다.",
+      "방향을 틀리면 넉백 거리가 길어져 실패합니다.",
+      "동시에 케프카의 외곽 돌진을 보고 시작 위치와 회전 방향을 익힙니다.",
+    ],
+    modalEyebrow: "KEFCA P3 SIMULATOR",
+    modalTitle: "Futures Rewritten P3 시뮬레이터",
+    modalCopy:
+      "Phase 3의 진공파 시전부터 알테마 블래스터 주사위 산개까지 이미지 트레이닝하기 위한 시뮬레이터입니다.\n탱커 LB 공략을 전제로, 엑스데스의 출현 위치에 맞춰 올바른 방향으로 혼돈의 바람을 처리하고, 넉백 후 쉐어에 합류한 뒤, 주사위 징에 맞는 산개 위치로 이동해 주세요.",
+    modalControlHint: "WASD 또는 클릭 이동으로 캐릭터를 조작할 수 있습니다.",
+    languageLabel: "언어",
+    guideToggleLabel: "가이드 표시",
+    startButton: "시작",
+    retryButton: "다시 하기",
+    resetButton: "리셋",
+    guideOn: "가이드 ON",
+    guideOff: "가이드 OFF",
+    receiveFront: "정면으로 받기",
+    receiveBack: "뒤를 보고 받기",
+    moveTo: (pair) => `${pair} 위치로 이동`,
+    vacuumWave: "진공파",
+    stack: "쉐어",
+    clockwise: "시계",
+    counterclockwise: "반시계",
+    successSummary: (start, end, rotation, scatter, dice, pair) =>
+      `알테마 블래스터: ${start} -> ${end} / ${rotation} (주사위 ${scatter})\n주사위 번호: ${dice} ( ${pair} )`,
+    vacuumFailureFront: "진공파 처리 실패. 혼돈의 바람은 정면으로 받아야 했습니다.",
+    vacuumFailureBack: "진공파 처리 실패. 혼돈의 바람은 뒤를 보고 받아야 했습니다.",
+    stackFailure: "쉐어 실패. 쉐어 판정 시 다른 플레이어와 겹쳐 있지 않았습니다.",
+    finalBurstFailurePrefix: "마지막 8개의 알테마 블래스터에서 겹침이 발생했습니다.",
+    diceLabel: (value, isYou) => (isYou ? `주사위${value}(YOU)` : `주사위${value}`),
+    closeResultAria: "닫기",
+  },
+};
 
 const ARENA = {
   centerX: canvas.width / 2,
@@ -192,6 +448,7 @@ const state = {
   stackResolvedAt: null,
   knockbackAnimation: null,
   pendingFailureReason: null,
+  locale: "ja",
   showGuides: true,
 };
 
@@ -205,12 +462,77 @@ const windImages = {
 windImages.front.src = CHAOS_WIND_TYPES.front.asset;
 windImages.back.src = CHAOS_WIND_TYPES.back.asset;
 
+function currentTranslations() {
+  return TRANSLATIONS[state.locale] || TRANSLATIONS.ja;
+}
+
+function rotationToken(rotationKey) {
+  return rotationKey === "clockwise" ? currentTranslations().clockwise : currentTranslations().counterclockwise;
+}
+
+function applyLocale() {
+  const t = currentTranslations();
+  document.documentElement.lang = state.locale;
+  document.title = t.documentTitle;
+  canvas.setAttribute("aria-label", t.arenaAriaLabel);
+  UI.heroEyebrow.textContent = t.heroEyebrow;
+  UI.heroTitle.textContent = t.heroTitle;
+  UI.hintMoveKeys.textContent = t.hintMoveKeys;
+  UI.hintMoveClick.textContent = t.hintMoveClick;
+  UI.hintFacingLock.textContent = t.hintFacingLock;
+  UI.hintPanelLabel.textContent = t.hintPanelLabel;
+  UI.timeLabel.textContent = t.timeLabel;
+  UI.positionLabel.textContent = t.positionLabel;
+  UI.facingLabel.textContent = t.facingLabel;
+  UI.debuffLabel.textContent = t.debuffLabel;
+  UI.targetLabel.textContent = t.targetLabel;
+  UI.timelinePanelLabel.textContent = t.timelinePanelLabel;
+  UI.notesPanelLabel.textContent = t.notesPanelLabel;
+  UI.timelineItems.forEach((item, index) => {
+    item.textContent = t.timeline[index];
+  });
+  Array.from(UI.notesList.querySelectorAll("li")).forEach((item, index) => {
+    item.textContent = t.notes[index];
+  });
+  UI.modalEyebrow.textContent = t.modalEyebrow;
+  UI.modalTitle.textContent = t.modalTitle;
+  UI.modalCopy.textContent = t.modalCopy;
+  UI.modalControlHint.textContent = t.modalControlHint;
+  UI.languageLabel.textContent = t.languageLabel;
+  UI.guideToggleLabel.textContent = t.guideToggleLabel;
+  UI.startButton.textContent = t.startButton;
+  UI.retry.textContent = t.retryButton;
+  UI.closeResult.setAttribute("aria-label", t.closeResultAria);
+  UI.localeRadios.forEach((radio) => {
+    radio.checked = radio.value === state.locale;
+  });
+}
+
 function canvasResponsiveScale() {
   const width = canvas.clientWidth || canvas.width;
   if (width <= 360) return 1.6;
   if (width <= 420) return 1.42;
   if (width <= 520) return 1.24;
   return 1;
+}
+
+function loadSavedLocale() {
+  try {
+    const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (saved && TRANSLATIONS[saved]) {
+      state.locale = saved;
+    }
+  } catch {
+    // Ignore storage errors and fall back to Japanese.
+  }
+}
+
+function saveLocale(locale) {
+  try {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  } catch {
+    // Ignore storage errors.
+  }
 }
 
 function pointOnCircle(radius, angle) {
@@ -298,10 +620,6 @@ function currentRotationKey() {
   return state.pattern.direction === 1 ? "clockwise" : "counterclockwise";
 }
 
-function rotationLabel(rotationKey) {
-  return rotationKey === "clockwise" ? "時計回り" : "反時計回り";
-}
-
 function oppositeRotationKey(rotationKey) {
   return rotationKey === "clockwise" ? "counterclockwise" : "clockwise";
 }
@@ -311,11 +629,16 @@ function successResultSummary() {
   const endLabel = currentEndLabel();
   const rotationKey = currentRotationKey();
   const scatterRotation = oppositeRotationKey(rotationKey);
+  const t = currentTranslations();
 
-  return [
-    `アルテマブラスター：${startLabel} -> ${endLabel} / ${rotationLabel(rotationKey)}（サイコロ${rotationLabel(scatterRotation)}）`,
-    `サイコロ番号：${state.player.diceValue} ( ${state.player.finalPairLabel} )`,
-  ].join("\n");
+  return t.successSummary(
+    startLabel,
+    endLabel,
+    rotationToken(rotationKey),
+    rotationToken(scatterRotation),
+    state.player.diceValue,
+    state.player.finalPairLabel
+  );
 }
 
 function finalPairLabelForDice(diceValue) {
@@ -356,6 +679,7 @@ function createParty(player) {
 }
 
 function resetSimulation() {
+  const t = currentTranslations();
   state.running = false;
   state.finished = false;
   state.time = 0;
@@ -375,12 +699,13 @@ function resetSimulation() {
   state.knockbackAnimation = null;
   state.pendingFailureReason = null;
   state.party = createParty(state.player);
-  UI.guideToggle.textContent = state.showGuides ? "ガイドOFF" : "ガイドON";
-  UI.reset.textContent = "リセット";
+  UI.guideToggle.textContent = state.showGuides ? t.guideOff : t.guideOn;
+  UI.reset.textContent = t.resetButton;
   if (UI.modalGuideToggle) {
     UI.modalGuideToggle.checked = state.showGuides;
   }
   UI.resultOverlay.classList.add("hidden");
+  UI.resultReason.style.display = "none";
   syncHud();
   draw();
 }
@@ -487,11 +812,17 @@ function handleClickMovement(dt) {
 }
 
 function syncHud() {
+  const t = currentTranslations();
   UI.time.textContent = state.showGuides ? `${state.time.toFixed(1)}s` : "—";
   UI.position.textContent = state.showGuides ? `X ${state.player.x.toFixed(1)} / Y ${state.player.y.toFixed(1)}` : "—";
   UI.facing.textContent = state.showGuides ? `${normalizeDegrees(state.player.facing).toFixed(0)}°` : "—";
-  UI.debuff.textContent = state.showGuides ? (state.chaosWind?.label || "—") : "—";
-  UI.target.textContent = state.showGuides ? `${state.player.finalPairLabel} へ移動` : "—";
+  if (state.showGuides) {
+    UI.debuff.textContent = state.chaosWind?.faceMode === "toward" ? t.receiveFront : t.receiveBack;
+    UI.target.textContent = t.moveTo(state.player.finalPairLabel);
+  } else {
+    UI.debuff.textContent = "—";
+    UI.target.textContent = "—";
+  }
   UI.playerInfoCard.style.display = state.showGuides ? "grid" : "none";
   UI.timelineList.style.display = state.showGuides ? "grid" : "none";
   UI.notesList.style.display = state.showGuides ? "block" : "none";
@@ -686,6 +1017,7 @@ function drawExdeath() {
 
 function drawExdeathCastBar() {
   if (state.time < TIMINGS.castStart || state.resolvedVacuumWave) return;
+  const t = currentTranslations();
 
   const castDuration = TIMINGS.vacuumResolveAt - TIMINGS.castStart;
   const progress = Math.max(0, Math.min(1, (state.time - TIMINGS.castStart) / castDuration));
@@ -712,7 +1044,7 @@ function drawExdeathCastBar() {
   ctx.font = "700 12px 'Yu Gothic UI', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
-  ctx.fillText("真空波", state.exdeath.x, y - 6);
+  ctx.fillText(t.vacuumWave, state.exdeath.x, y - 6);
   ctx.restore();
 }
 
@@ -838,6 +1170,7 @@ function drawFinalBurst() {
 function drawStackTelegraph() {
   if (state.time < TIMINGS.stackGatherStartAt) return;
   if (state.stackResolved && state.time > state.stackResolvedAt + 0.15) return;
+  const t = currentTranslations();
 
   const player = state.player;
   const resolving = state.stackResolved;
@@ -853,7 +1186,7 @@ function drawStackTelegraph() {
   ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
   ctx.font = "700 18px 'Yu Gothic UI', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("頭割り", 0, -96);
+  ctx.fillText(t.stack, 0, -96);
   ctx.restore();
 }
 
@@ -864,7 +1197,7 @@ function diceLayout(value) {
     3: { width: 40, points: [[0, -10], [-10, 8], [10, 8]] },
     4: { width: 40, points: [[-10, -10], [10, -10], [-10, 10], [10, 10]] },
     5: { width: 62, points: [[-24, 0], [4, -10], [20, -10], [4, 10], [20, 10]] },
-    6: { width: 70, points: [[-20, -10], [-30, 8], [-10, 8], [8, -10], [28, -10], [28, 8]] },
+    6: { width: 70, points: [[-20, -12], [-30, 8], [-10, 8], [8, -8], [28, -8], [18, 12]] },
     7: { width: 88, points: [[-24, -10], [-34, 8], [-14, 8], [12, -10], [32, -10], [12, 10], [32, 10]] },
     8: { width: 96, points: [[-30, -10], [-30, 10], [-10, -10], [-10, 10], [14, -10], [14, 10], [34, -10], [34, 10]] },
   };
@@ -974,9 +1307,10 @@ function draw() {
 }
 
 function renderResult(status, reason = "") {
+  const t = currentTranslations();
   state.running = false;
   state.finished = true;
-  UI.reset.textContent = "リトライ";
+  UI.reset.textContent = t.retryButton;
   if (!SHOW_RESULT_MODAL || DEBUG_SUPPRESS_RESULT_MODAL) return;
 
   UI.resultKicker.textContent = "";
@@ -991,10 +1325,11 @@ function showFailureResult(reason) {
 }
 
 function vacuumFailureReason() {
+  const t = currentTranslations();
   if (state.chaosWind?.faceMode === "toward") {
-    return "真空波は失敗。混沌の風は正面で受ける必要がありました。";
+    return t.vacuumFailureFront;
   }
-  return "真空波は失敗。混沌の風は背面で受ける必要がありました。";
+  return t.vacuumFailureBack;
 }
 
 function startKnockbackAnimation(ok) {
@@ -1080,7 +1415,7 @@ function evaluateStackFailure() {
   );
   state.stackFailure = nearestDistance > 72;
   if (state.stackFailure) {
-    showFailureResult("頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。");
+    showFailureResult(currentTranslations().stackFailure);
   }
 }
 
@@ -1133,8 +1468,8 @@ function evaluateFinalBurstCollisions() {
 
 function diceLabelForMemberId(memberId) {
   const member = state.party.find((item) => item.id === memberId);
-  if (!member) return "サイコロ?";
-  return member.id === "YOU" ? `サイコロ${member.diceValue}(YOU)` : `サイコロ${member.diceValue}`;
+  if (!member) return currentTranslations().diceLabel("?", false);
+  return currentTranslations().diceLabel(member.diceValue, member.id === "YOU");
 }
 
 function formatFinalBurstFailures() {
@@ -1160,9 +1495,9 @@ function maybeFinish() {
       finalOk
         ? successResultSummary()
         : state.finalBurstFailures.length
-        ? `最終8本で巻き込みが発生しました。\n${formatFinalBurstFailures()}`
+        ? `${currentTranslations().finalBurstFailurePrefix}\n${formatFinalBurstFailures()}`
           : state.stackFailure
-            ? "頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。"
+            ? currentTranslations().stackFailure
             : vacuumFailureReason()
     );
   }
@@ -1228,20 +1563,37 @@ UI.closeResult.addEventListener("click", () => {
   UI.resultOverlay.classList.add("hidden");
 });
 UI.guideToggle.addEventListener("click", () => {
+  const t = currentTranslations();
   state.showGuides = !state.showGuides;
-  UI.guideToggle.textContent = state.showGuides ? "ガイドOFF" : "ガイドON";
+  UI.guideToggle.textContent = state.showGuides ? t.guideOff : t.guideOn;
   if (UI.modalGuideToggle) {
     UI.modalGuideToggle.checked = state.showGuides;
   }
+  syncHud();
   draw();
 });
 if (UI.modalGuideToggle) {
   UI.modalGuideToggle.addEventListener("change", () => {
+    const t = currentTranslations();
     state.showGuides = UI.modalGuideToggle.checked;
-    UI.guideToggle.textContent = state.showGuides ? "ガイドOFF" : "ガイドON";
+    UI.guideToggle.textContent = state.showGuides ? t.guideOff : t.guideOn;
+    syncHud();
     draw();
   });
 }
 
+UI.localeRadios.forEach((radio) => {
+  radio.addEventListener("change", () => {
+    if (!radio.checked) return;
+    state.locale = radio.value;
+    saveLocale(state.locale);
+    applyLocale();
+    syncHud();
+    draw();
+  });
+});
+
+loadSavedLocale();
+applyLocale();
 resetSimulation();
 requestAnimationFrame(tick);

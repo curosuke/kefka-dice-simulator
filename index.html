@@ -15,8 +15,8 @@
   <body>
     <main class="app-shell">
       <section class="hero-panel">
-        <p class="eyebrow">KEFCA P3 SIMULATOR</p>
-        <h1>絶妖精乱舞 P3 シミュレータ</h1>
+        <p id="heroEyebrow" class="eyebrow">KEFCA P3 SIMULATOR</p>
+        <h1 id="heroTitle">絶妖精乱舞 P3 シミュレータ</h1>
       </section>
 
       <section class="layout">
@@ -27,26 +27,26 @@
             <button id="resetButton" class="arena-button reset-button" type="button">リセット</button>
           </div>
           <div class="hint-row">
-            <span>WASD / 矢印で移動</span>
-            <span>クリックで移動先指定</span>
-            <span>向きは最後に移動した方向で固定</span>
+            <span id="hintMoveKeys">WASD / 矢印で移動</span>
+            <span id="hintMoveClick">クリックで移動先指定</span>
+            <span id="hintFacingLock">向きは最後に移動した方向で固定</span>
           </div>
         </div>
 
         <aside class="side-panel">
           <section class="card">
-            <p class="panel-label">HINT</p>
+            <p id="hintPanelLabel" class="panel-label">HINT</p>
             <div id="playerInfoCard" class="player-grid">
-              <div><span>時間</span><strong id="timeDisplay">0.0s</strong></div>
-              <div><span>位置</span><strong id="positionDisplay">X 0.0 / Y 0.0</strong></div>
-              <div><span>向き</span><strong id="facingDisplay">0°</strong></div>
-              <div><span>混沌の風</span><strong id="debuffDisplay">背面で受ける</strong></div>
-              <div><span>移動先</span><strong id="targetDisplay">未指定</strong></div>
+              <div><span id="timeLabel">時間</span><strong id="timeDisplay">0.0s</strong></div>
+              <div><span id="positionLabel">位置</span><strong id="positionDisplay">X 0.0 / Y 0.0</strong></div>
+              <div><span id="facingLabel">向き</span><strong id="facingDisplay">0°</strong></div>
+              <div><span id="debuffLabel">混沌の風</span><strong id="debuffDisplay">背面で受ける</strong></div>
+              <div><span id="targetLabel">移動先</span><strong id="targetDisplay">未指定</strong></div>
             </div>
           </section>
 
           <section class="card">
-            <p class="panel-label">TIMELINE</p>
+            <p id="timelinePanelLabel" class="panel-label">TIMELINE</p>
             <ul id="timelineList" class="timeline-list">
               <li data-step="0">開始待ち</li>
               <li data-step="1">真空波詠唱</li>
@@ -56,7 +56,7 @@
               <li data-step="5">サイコロ散会</li>
               <li data-step="6">アルテマブラスター発動</li>
             </ul>
-            <p class="panel-label notes-label">Notes</p>
+            <p id="notesPanelLabel" class="panel-label notes-label">Notes</p>
             <ul id="notesList" class="notes-list">
               <li>真空波はエクスデス基準で背面受けなら OK</li>
               <li>向きを誤るとノックバック距離が伸びて NG</li>
@@ -69,18 +69,39 @@
 
     <div id="introModal" class="overlay">
       <div class="modal-card">
-        <p class="eyebrow">KEFCA P3 SIMULATOR</p>
-        <h2>絶妖精乱舞 P3 シミュレータ</h2>
-        <p class="modal-copy">
+        <p id="modalEyebrow" class="eyebrow">KEFCA P3 SIMULATOR</p>
+        <h2 id="modalTitle">絶妖精乱舞 P3 シミュレータ</h2>
+        <p id="modalCopy" class="modal-copy">
           Phase3の真空波詠唱～アルテマブラスターのサイコロ散会までをイメトレするためのシミュレータです。
           タンクLB法を前提として、エクスデスの出現位置に応じて正しい向きで混沌の風を受けて、ノックバック後に頭割りに参加し、サイコロマーカーの付与に応じた散会位置に移動してください。
         </p>
-        <ul class="modal-list">
-          <li>WASDもしくはクリックで自キャラを移動できます。</li>
+        <ul id="modalList" class="modal-list">
+          <li id="modalControlHint">WASDもしくはクリックで自キャラを移動できます。</li>
         </ul>
+        <div class="locale-group" role="radiogroup" aria-label="Language">
+          <p id="languageLabel" class="panel-label locale-label">Language</p>
+          <div class="locale-options">
+            <label class="locale-option">
+              <input type="radio" name="locale" value="ja" checked>
+              <span>日本語</span>
+            </label>
+            <label class="locale-option">
+              <input type="radio" name="locale" value="en">
+              <span>English</span>
+            </label>
+            <label class="locale-option">
+              <input type="radio" name="locale" value="zh">
+              <span>中文</span>
+            </label>
+            <label class="locale-option">
+              <input type="radio" name="locale" value="ko">
+              <span>한국어</span>
+            </label>
+          </div>
+        </div>
         <label class="modal-toggle">
           <input id="modalGuideToggle" type="checkbox" checked>
-          <span>ガイドを表示する</span>
+          <span id="guideToggleLabel">ガイドを表示する</span>
         </label>
         <button id="startButton" class="primary-button modal-start-button" type="button">開始</button>
       </div>

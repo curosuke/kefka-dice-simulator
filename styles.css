@@ -300,6 +300,47 @@ body {
   color: var(--text);
 }
 
+.locale-group {
+  margin: 4px 0 18px;
+}
+
+.locale-label {
+  margin-bottom: 10px;
+}
+
+.locale-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.locale-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.locale-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.locale-option:has(input:checked) {
+  border-color: rgba(244, 199, 106, 0.44);
+  background: linear-gradient(135deg, rgba(244, 199, 106, 0.16), rgba(255, 143, 90, 0.12));
+  transform: translateY(-1px);
+}
+
 .result-card {
   position: relative;
   text-align: center;
@@ -457,5 +498,13 @@ body {
   .modal-toggle {
     align-items: flex-start;
     line-height: 1.5;
+  }
+
+  .locale-options {
+    flex-direction: column;
+  }
+
+  .locale-option {
+    width: 100%;
   }
 }
