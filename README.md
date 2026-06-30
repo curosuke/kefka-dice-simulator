@@ -2,13 +2,13 @@
 
 A browser-based practice simulator for **Futures Rewritten (Ultimate) Phase 3**.
 
-This project focuses on the sequence from **Vacuum Wave** through **Ultima Blaster** dice spread resolution. It is designed for image training and movement practice: handling **Chaos Wind**, joining the stack after knockback, tracking the rotating Ultima Blaster pattern, and moving to the correct final spread position based on the assigned dice marker.
+This project focuses on the sequence from **Vacuum Wave** through **Ultima Blaster** dice spread resolution. It is designed for image training and movement practice: handling **Headwind / Tailwind**, joining the stack after knockback, tracking the rotating Ultima Blaster pattern, and moving to the correct final spread position based on the assigned dice marker.
 
 ## Features
 
 - Keyboard movement with `WASD` or arrow keys
 - Click-to-move support
-- Facing-based **Chaos Wind** resolution
+- Facing-based **Headwind / Tailwind** resolution
 - Randomized **8-direction Ultima Blaster** start pattern
 - Randomized clockwise / counterclockwise rotation
 - Randomized dice assignment for the controlled player and party members

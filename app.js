@@ -61,7 +61,7 @@ const TRANSLATIONS = {
     timeLabel: "時間",
     positionLabel: "位置",
     facingLabel: "向き",
-    debuffLabel: "混沌の風",
+    debuffLabel: "混沌の風 / 混沌の逆風",
     targetLabel: "移動先",
     timelinePanelLabel: "TIMELINE",
     notesPanelLabel: "Notes",
@@ -75,14 +75,14 @@ const TRANSLATIONS = {
       "アルテマブラスター発動",
     ],
     notes: [
-      "真空波はエクスデス基準で背面受けなら OK",
+      "真空波は、付与された混沌の風 / 混沌の逆風に応じて受け方が変わる",
       "向きを誤るとノックバック距離が伸びて NG",
       "並走するケフカの外周観察で開始位置と回転方向を覚える",
     ],
     modalEyebrow: "KEFCA P3 SIMULATOR",
     modalTitle: "絶妖精乱舞 P3 シミュレータ",
     modalCopy:
-      "Phase3の真空波詠唱～アルテマブラスターのサイコロ散会までをイメトレするためのシミュレータです。\nタンクLB法を前提として、エクスデスの出現位置に応じて正しい向きで混沌の風を受けて、ノックバック後に頭割りに参加し、サイコロマーカーの付与に応じた散会位置に移動してください。",
+      "Phase3の真空波詠唱～アルテマブラスターのサイコロ散会までをイメトレするためのシミュレータです。\nタンクLB法を前提として、エクスデスの出現位置に応じて、付与された混沌の風 / 混沌の逆風を正しい向きで受け、ノックバック後に頭割りへ参加し、サイコロマーカーの付与に応じた散会位置に移動してください。",
     modalControlHint: "WASDもしくはクリックで自キャラを移動できます。",
     languageLabel: "言語",
     guideToggleLabel: "ガイドを表示する",
@@ -100,7 +100,7 @@ const TRANSLATIONS = {
     counterclockwise: "反時計回り",
     successSummary: (start, end, rotation, scatter, dice, pair) =>
       `アルテマブラスター：${start} -> ${end} / ${rotation}（サイコロ${scatter}）\nサイコロ番号：${dice} ( ${pair} )`,
-    vacuumFailureFront: "真空波は失敗。混沌の風は正面で受ける必要がありました。",
+    vacuumFailureFront: "真空波は失敗。混沌の逆風は正面で受ける必要がありました。",
     vacuumFailureBack: "真空波は失敗。混沌の風は背面で受ける必要がありました。",
     stackFailure: "頭割り発生時に他プレイヤーと重なっておらず、範囲外でした。",
     finalBurstFailurePrefix: "最終8本で巻き込みが発生しました。",
@@ -119,7 +119,7 @@ const TRANSLATIONS = {
     timeLabel: "Time",
     positionLabel: "Position",
     facingLabel: "Facing",
-    debuffLabel: "Chaos Wind",
+    debuffLabel: "Headwind / Tailwind",
     targetLabel: "Target",
     timelinePanelLabel: "TIMELINE",
     notesPanelLabel: "Notes",
@@ -133,14 +133,14 @@ const TRANSLATIONS = {
       "Ultima Blaster",
     ],
     notes: [
-      "Vacuum Wave is safe if you resolve it correctly relative to Exdeath.",
+      "Vacuum Wave is safe if you resolve Headwind or Tailwind correctly relative to Exdeath.",
       "Incorrect facing causes excessive knockback and failure.",
       "Watch Kefka's outer pattern to identify the starting point and rotation.",
     ],
     modalEyebrow: "KEFCA P3 SIMULATOR",
     modalTitle: "Futures Rewritten P3 Simulator",
     modalCopy:
-      "A simulator for practicing the sequence from Vacuum Wave through the Ultima Blaster dice spread in Phase 3.\nBuilt around the tank LB strategy: resolve Chaos Wind with the correct facing based on Exdeath's spawn, join the stack after knockback, and move to the proper spread position for your dice marker.",
+      "A simulator for practicing the sequence from Vacuum Wave through the Ultima Blaster dice spread in Phase 3.\nBuilt around the tank LB strategy: resolve Headwind or Tailwind with the correct facing based on Exdeath's spawn, join the stack after knockback, and move to the proper spread position for your dice marker.",
     modalControlHint: "Move your character with WASD or click-to-move.",
     languageLabel: "Language",
     guideToggleLabel: "Show guides",
@@ -158,8 +158,8 @@ const TRANSLATIONS = {
     counterclockwise: "Counterclockwise",
     successSummary: (start, end, rotation, scatter, dice, pair) =>
       `Ultima Blaster: ${start} -> ${end} / ${rotation} (dice ${scatter})\nDice number: ${dice} ( ${pair} )`,
-    vacuumFailureFront: "Vacuum Wave failed. Chaos Wind required a front-facing resolve.",
-    vacuumFailureBack: "Vacuum Wave failed. Chaos Wind required a back-facing resolve.",
+    vacuumFailureFront: "Vacuum Wave failed. Tailwind required a front-facing resolve.",
+    vacuumFailureBack: "Vacuum Wave failed. Headwind required a rear-facing resolve.",
     stackFailure: "Stack failed. You were not overlapping the party when the stack resolved.",
     finalBurstFailurePrefix: "The final eight Ultima Blasters clipped other players.",
     diceLabel: (value, isYou) => (isYou ? `Dice ${value} (YOU)` : `Dice ${value}`),
@@ -177,7 +177,7 @@ const TRANSLATIONS = {
     timeLabel: "时间",
     positionLabel: "位置",
     facingLabel: "朝向",
-    debuffLabel: "混沌之风",
+    debuffLabel: "混沌之风 / 混沌之逆风",
     targetLabel: "移动目标",
     timelinePanelLabel: "TIMELINE",
     notesPanelLabel: "NOTES",
@@ -191,14 +191,14 @@ const TRANSLATIONS = {
       "究极爆裂发动",
     ],
     notes: [
-      "只要按艾克斯迪司为基准正确处理真空波即可通过。",
+      "真空波需要根据混沌之风 / 混沌之逆风，以正确方向承伤。",
       "朝向错误会导致击退距离过长并判定失败。",
       "同时观察凯夫卡在外周的突进，记住起点与旋转方向。",
     ],
     modalEyebrow: "KEFCA P3 SIMULATOR",
     modalTitle: "Futures Rewritten P3 模拟器",
     modalCopy:
-      "用于练习 Phase 3 从真空波咏唱到究极爆裂骰子散开的模拟器。\n以前排坦克 LB 处理为前提，请根据艾克斯迪司的出现位置，以正确朝向处理混沌之风，在击退后参加分摊，并根据骰子标记移动到对应散开位置。",
+      "用于练习 Phase 3 从真空波咏唱到究极爆裂骰子散开的模拟器。\n以前排坦克 LB 处理为前提，请根据艾克斯迪司的出现位置，以正确朝向处理混沌之风 / 混沌之逆风，在击退后参加分摊，并根据骰子标记移动到对应散开位置。",
     modalControlHint: "可使用 WASD 或点击移动角色。",
     languageLabel: "语言",
     guideToggleLabel: "显示指引",
@@ -216,7 +216,7 @@ const TRANSLATIONS = {
     counterclockwise: "逆时针",
     successSummary: (start, end, rotation, scatter, dice, pair) =>
       `究极爆裂：${start} -> ${end} / ${rotation}（骰子${scatter}）\n骰子编号：${dice} ( ${pair} )`,
-    vacuumFailureFront: "真空波处理失败。混沌之风需要以正面承伤。",
+    vacuumFailureFront: "真空波处理失败。混沌之逆风需要以正面承伤。",
     vacuumFailureBack: "真空波处理失败。混沌之风需要以背面承伤。",
     stackFailure: "分摊失败。分摊结算时你没有和队友重叠。",
     finalBurstFailurePrefix: "最后八道究极爆裂发生了卷入。",
@@ -235,7 +235,7 @@ const TRANSLATIONS = {
     timeLabel: "시간",
     positionLabel: "위치",
     facingLabel: "방향",
-    debuffLabel: "혼돈의 바람",
+    debuffLabel: "혼돈의 바람 / 혼돈의 역풍",
     targetLabel: "이동 위치",
     timelinePanelLabel: "TIMELINE",
     notesPanelLabel: "NOTES",
@@ -249,14 +249,14 @@ const TRANSLATIONS = {
       "알테마 블래스터 발동",
     ],
     notes: [
-      "엑스데스를 기준으로 진공파를 올바르게 처리하면 통과입니다.",
+      "진공파는 혼돈의 바람 / 혼돈의 역풍에 맞는 방향으로 받아야 통과입니다.",
       "방향을 틀리면 넉백 거리가 길어져 실패합니다.",
       "동시에 케프카의 외곽 돌진을 보고 시작 위치와 회전 방향을 익힙니다.",
     ],
     modalEyebrow: "KEFCA P3 SIMULATOR",
     modalTitle: "Futures Rewritten P3 시뮬레이터",
     modalCopy:
-      "Phase 3의 진공파 시전부터 알테마 블래스터 주사위 산개까지 이미지 트레이닝하기 위한 시뮬레이터입니다.\n탱커 LB 공략을 전제로, 엑스데스의 출현 위치에 맞춰 올바른 방향으로 혼돈의 바람을 처리하고, 넉백 후 쉐어에 합류한 뒤, 주사위 징에 맞는 산개 위치로 이동해 주세요.",
+      "Phase 3의 진공파 시전부터 알테마 블래스터 주사위 산개까지 이미지 트레이닝하기 위한 시뮬레이터입니다.\n탱커 LB 공략을 전제로, 엑스데스의 출현 위치에 맞춰 혼돈의 바람 / 혼돈의 역풍을 올바른 방향으로 처리하고, 넉백 후 쉐어에 합류한 뒤, 주사위 징에 맞는 산개 위치로 이동해 주세요.",
     modalControlHint: "WASD 또는 클릭 이동으로 캐릭터를 조작할 수 있습니다.",
     languageLabel: "언어",
     guideToggleLabel: "가이드 표시",
@@ -274,7 +274,7 @@ const TRANSLATIONS = {
     counterclockwise: "반시계",
     successSummary: (start, end, rotation, scatter, dice, pair) =>
       `알테마 블래스터: ${start} -> ${end} / ${rotation} (주사위 ${scatter})\n주사위 번호: ${dice} ( ${pair} )`,
-    vacuumFailureFront: "진공파 처리 실패. 혼돈의 바람은 정면으로 받아야 했습니다.",
+    vacuumFailureFront: "진공파 처리 실패. 혼돈의 역풍은 정면으로 받아야 했습니다.",
     vacuumFailureBack: "진공파 처리 실패. 혼돈의 바람은 뒤를 보고 받아야 했습니다.",
     stackFailure: "쉐어 실패. 쉐어 판정 시 다른 플레이어와 겹쳐 있지 않았습니다.",
     finalBurstFailurePrefix: "마지막 8개의 알테마 블래스터에서 겹침이 발생했습니다.",
@@ -1049,6 +1049,7 @@ function drawExdeathCastBar() {
 }
 
 function drawChaosWindPanel() {
+  const t = currentTranslations();
   const scale = canvasResponsiveScale();
   const panelW = 116 * scale;
   const panelH = 94 * scale;
@@ -1089,7 +1090,8 @@ function drawChaosWindPanel() {
     ctx.fillStyle = "#ffe45f";
     ctx.font = `700 ${12 * scale}px 'Yu Gothic UI', sans-serif`;
     ctx.textAlign = "center";
-    ctx.fillText(state.chaosWind?.label || "", panelX + panelW / 2, panelY + 73 * scale);
+    const hintLabel = state.chaosWind?.faceMode === "toward" ? t.receiveFront : t.receiveBack;
+    ctx.fillText(hintLabel, panelX + panelW / 2, panelY + 73 * scale);
   }
   ctx.restore();
 }
